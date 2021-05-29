@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
 
-import websocket, json, pprint, numpy, talib, psycopg2
-import config
+import json, pprint, numpy, talib, psycopg2
+import glebza.tradeapp.config.config as config
 from binance import Client, ThreadedWebsocketManager, ThreadedDepthCacheManager
 from binance import ThreadedWebsocketManager
 from binance.enums import *
-from glebza.tradeapp.src.tradebot.repository.binance_bot_repository import BinanceBotRepository
+from glebza.tradeapp.src.repository.binance_bot_repository import BinanceBotRepository
 from binance.exceptions import BinanceAPIException
 
 
@@ -120,9 +120,9 @@ def handle_socket_message(msg):
 client = Client(config.api_key, config.api_secret)
 print('start listening {}'.format(symbol))
 repository = BinanceBotRepository()
-#order = place_order(client, symbol, Client.SIDE_BUY,float(36300), 0.001684)
+# order = place_order(client, symbol, Client.SIDE_BUY,float(36300), 0.001684)
 
-#order = {'symbol': 'BTCUSDT', 'orderId': 6183087675, 'orderListId': -1, 'clientOrderId': 'hzf8ut8BgIrCUh7Ey4kdgC', 'transactTime': 1622133593112, 'price': '38900.00000000', 'origQty': '0.00168400', 'executedQty': '0.00168400', 'cummulativeQuoteQty': '65.42289480', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'LIMIT', 'side': 'BUY', 'fills': [{'price': '38849.70000000', 'qty': '0.00168400', 'commission': '0.00000168', 'commissionAsset': 'BTC', 'tradeId': 875740731}]}
+# order = {'symbol': 'BTCUSDT', 'orderId': 6183087675, 'orderListId': -1, 'clientOrderId': 'hzf8ut8BgIrCUh7Ey4kdgC', 'transactTime': 1622133593112, 'price': '38900.00000000', 'origQty': '0.00168400', 'executedQty': '0.00168400', 'cummulativeQuoteQty': '65.42289480', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'LIMIT', 'side': 'BUY', 'fills': [{'price': '38849.70000000', 'qty': '0.00168400', 'commission': '0.00000168', 'commissionAsset': 'BTC', 'tradeId': 875740731}]}
 twm = ThreadedWebsocketManager(api_key=config.api_key, api_secret=config.api_secret)
 twm.start()
 twm.start_kline_socket(callback=handle_socket_message, symbol=symbol, interval=KLINE_INTERVAL_15MINUTE)

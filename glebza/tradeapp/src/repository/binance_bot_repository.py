@@ -1,5 +1,5 @@
 import psycopg2
-import config
+import glebza.tradeapp.config.config as config
 from datetime import datetime
 
 
@@ -61,3 +61,4 @@ class BinanceBotRepository:
         ''', (status, order_id))
         con.commit()
         con.close()
+
