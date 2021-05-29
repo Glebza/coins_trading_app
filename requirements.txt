@@ -1,4 +1,3 @@
-TA-Lib
 python-binance
 numpy
 psycopg2
