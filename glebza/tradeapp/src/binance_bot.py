@@ -1,17 +1,23 @@
 from datetime import datetime, timedelta
-
-import json, pprint, numpy, talib, psycopg2
-import glebza.tradeapp.config.config as config
+import json, pprint, numpy, talib, os
 from binance import Client, ThreadedWebsocketManager, ThreadedDepthCacheManager
 from binance import ThreadedWebsocketManager
 from binance.enums import *
 from glebza.tradeapp.src.repository.binance_bot_repository import BinanceBotRepository
 from binance.exceptions import BinanceAPIException
 
+API_KEY = os.environ['API_KEY']
+API_SECRET = os.environ['API_SECRET']
+client = Client(API_KEY, API_SECRET)
+symbol = 'BTCUSDT'
+RSI_PERIOD = 14
+RSI_OVERSOLD = 40
+RSI_OVERBOUGHT = 70
+START_CASH = 150
 
-def warm_up(ticker):
+
+def warm_up(client, ticker):
     print(ticker)
-    client = Client(config.api_key, config.api_secret)
     volumes = []
     closes = []
     end_date = datetime.now()
@@ -30,17 +36,13 @@ def warm_up(ticker):
     return (closes, volumes)
 
 
-symbol = 'BTCUSDT'
 warm_data = warm_up(symbol)
 volumes = warm_data[1]
 close_prices = warm_data[0]
 print(close_prices)
-RSI_PERIOD = 14
-RSI_OVERSOLD = 40
-RSI_OVERBOUGHT = 70
 in_position = False
 order = None
-start_cash = 200
+
 
 
 def place_order(client, symbol, side, price, quantity):
@@ -111,18 +113,16 @@ def handle_socket_message(msg):
         else:
             if prev_rsi < RSI_OVERSOLD < rsi[-1] and closed_price >= ma[-1] \
                     and obv[-2] < obv[-1] and close_prices[-2] < closed_price:
-                qty = start_cash / closed_price
+                qty = START_CASH / closed_price
                 print('buy! qty = {}'.format(qty))
                 order = place_order(client, symbol, Client.SIDE_BUY, closed_price, float(qty))
                 repository.save_order(order=order)
 
 
-client = Client(config.api_key, config.api_secret)
 print('start listening {}'.format(symbol))
-repository = BinanceBotRepository()
+# repository = BinanceBotRepository()
 # order = place_order(client, symbol, Client.SIDE_BUY,float(36300), 0.001684)
-
 # order = {'symbol': 'BTCUSDT', 'orderId': 6183087675, 'orderListId': -1, 'clientOrderId': 'hzf8ut8BgIrCUh7Ey4kdgC', 'transactTime': 1622133593112, 'price': '38900.00000000', 'origQty': '0.00168400', 'executedQty': '0.00168400', 'cummulativeQuoteQty': '65.42289480', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'LIMIT', 'side': 'BUY', 'fills': [{'price': '38849.70000000', 'qty': '0.00168400', 'commission': '0.00000168', 'commissionAsset': 'BTC', 'tradeId': 875740731}]}
-twm = ThreadedWebsocketManager(api_key=config.api_key, api_secret=config.api_secret)
+twm = ThreadedWebsocketManager(api_key=API_KEY, api_secret=API_SECRET)
 twm.start()
 twm.start_kline_socket(callback=handle_socket_message, symbol=symbol, interval=KLINE_INTERVAL_15MINUTE)

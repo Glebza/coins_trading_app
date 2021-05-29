@@ -1,7 +1,0 @@
-dbhost = 'localhost'
-dbport='5433'
-dbname='postgres'
-dbuser = 'postgres'
-dbpassword='postgres'
-api_key = 'bXxaQbaXen9K5JaS0OYRMvHCZKbIYi27L5ibBtGxfajxFnLYablVGAfkIG4cEyNv'
-api_secret = 'HcfjkYDd3UNPPQiPt25eBj19vrvvHpq8cfQDJdXAKd4sfl6US0ggCNIMmy22X8Bn'

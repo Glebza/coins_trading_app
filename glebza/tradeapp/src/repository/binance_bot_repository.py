@@ -1,17 +1,13 @@
 import psycopg2
-import glebza.tradeapp.config.config as config
 from datetime import datetime
+import os
 
 
 class BinanceBotRepository:
 
     def __get_connection(self):
-        connection = psycopg2.connect(
-            host=config.dbhost,
-            database=config.dbname,
-            port=config.dbport,
-            user=config.dbuser,
-            password=config.dbpassword)
+        DATABASE_URL = os.environ['DATABASE_URL']
+        connection = psycopg2.connect(DATABASE_URL)
         return connection
 
     def save_order(self, order):
