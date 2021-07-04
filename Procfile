@@ -1,0 +1,1 @@
+worker: /usr/local/bin/python3.7 binance_bot.py

@@ -6,14 +6,13 @@ import os
 class BinanceBotRepository:
 
     def __get_connection(self):
-        DATABASE_URL = os.environ['DATABASE_URL']
-        connection = psycopg2.connect(DATABASE_URL)
+        #DATABASE_URL = os.environ['DATABASE_URL']
+        connection = psycopg2.connect(dbname="postgres", user="glebza",password="glebzaDb1",hostaddr="45.141.76.98",port="5432")
         return connection
 
     def save_order(self, order):
         con = self.__get_connection()
         cur = con.cursor()
-        print(type(order['side']))
         cur.execute('select id from coins where ticker = %s', (order['symbol'],) )
         ticker_id = cur.fetchone()
         transact_time = datetime.fromtimestamp(order['transactTime']/1000)

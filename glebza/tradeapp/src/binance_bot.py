@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
-import json, pprint, numpy, talib, os
+import json,asyncio, pprint, numpy, talib, os
+import websocket
 from binance import Client, ThreadedWebsocketManager, ThreadedDepthCacheManager
 from binance import ThreadedWebsocketManager
 from binance.enums import *
@@ -10,7 +11,7 @@ API_KEY = os.environ['API_KEY']
 API_SECRET = os.environ['API_SECRET']
 client = Client(API_KEY, API_SECRET)
 symbol = 'BTCUSDT'
-RSI_PERIOD = 14
+RSI_PERIOD = 15
 RSI_OVERSOLD = 40
 RSI_OVERBOUGHT = 70
 START_CASH = 150
@@ -22,8 +23,7 @@ def warm_up(client, ticker):
     closes = []
     end_date = datetime.now()
     start_date = (end_date - timedelta(days=1)).strftime("%d/%m/%Y, %H:%M:%S")
-    klines = client.get_historical_klines(symbol, Client.KLINE_INTERVAL_15MINUTE, start_date,
-                                          end_date.strftime("%d/%m/%Y, %H:%M:%S"))
+    klines = client.get_historical_klines(symbol, Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
     start_interval = 0
     open_p = 1
     high = 2
@@ -36,7 +36,7 @@ def warm_up(client, ticker):
     return (closes, volumes)
 
 
-warm_data = warm_up(symbol)
+warm_data = warm_up(client,symbol)
 volumes = warm_data[1]
 close_prices = warm_data[0]
 print(close_prices)
@@ -63,11 +63,12 @@ def place_order(client, symbol, side, price, quantity):
 
 
 # start is required to initialise its internal loop
-def handle_socket_message(msg):
+def handle_socket_message(ws,msg):
     global in_position
     global order
+    global symbol
     repository = BinanceBotRepository()
-    candle = msg['k']
+    candle = json.loads(msg)['k']
     is_candle_closed = candle['x']
     closed_price = float(candle['c'])
     volume = candle['v']
@@ -82,10 +83,9 @@ def handle_socket_message(msg):
                 order = None
 
     if is_candle_closed:
-        print(msg)
+
         close_prices.append(float(closed_price))
         volumes.append(float(volume))
-        print(close_prices)
         np_closes = numpy.array(close_prices)
         np_volumes = numpy.array(volumes)
         rsi = talib.RSI(np_closes, RSI_PERIOD)
@@ -113,16 +113,36 @@ def handle_socket_message(msg):
         else:
             if prev_rsi < RSI_OVERSOLD < rsi[-1] and closed_price >= ma[-1] \
                     and obv[-2] < obv[-1] and close_prices[-2] < closed_price:
-                qty = START_CASH / closed_price
+                qty = round(START_CASH / closed_price, 5)
                 print('buy! qty = {}'.format(qty))
                 order = place_order(client, symbol, Client.SIDE_BUY, closed_price, float(qty))
                 repository.save_order(order=order)
 
 
+def on_error(ws, error):
+    print(error)
+
+
+def on_close(ws):
+    print("### closed ###")
+
+
 print('start listening {}'.format(symbol))
-# repository = BinanceBotRepository()
+repository = BinanceBotRepository()
+
 # order = place_order(client, symbol, Client.SIDE_BUY,float(36300), 0.001684)
 # order = {'symbol': 'BTCUSDT', 'orderId': 6183087675, 'orderListId': -1, 'clientOrderId': 'hzf8ut8BgIrCUh7Ey4kdgC', 'transactTime': 1622133593112, 'price': '38900.00000000', 'origQty': '0.00168400', 'executedQty': '0.00168400', 'cummulativeQuoteQty': '65.42289480', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'LIMIT', 'side': 'BUY', 'fills': [{'price': '38849.70000000', 'qty': '0.00168400', 'commission': '0.00000168', 'commissionAsset': 'BTC', 'tradeId': 875740731}]}
-twm = ThreadedWebsocketManager(api_key=API_KEY, api_secret=API_SECRET)
-twm.start()
-twm.start_kline_socket(callback=handle_socket_message, symbol=symbol, interval=KLINE_INTERVAL_15MINUTE)
+
+#twm = ThreadedWebsocketManager(api_key=API_KEY, api_secret=API_SECRET)
+#twm.start()
+#twm.start_kline_socket(callback=handle_socket_message, symbol=symbol, interval=KLINE_INTERVAL_15MINUTE)
+
+SOCKET = 'wss://stream.binance.com:9443/ws/btcusdt@kline_15m'
+websocket.enableTrace(False)
+ws = websocket.WebSocketApp(SOCKET,
+                            on_message=handle_socket_message,
+                            on_error=on_error,
+                            on_close=on_close)
+ws.run_forever()
+
+
