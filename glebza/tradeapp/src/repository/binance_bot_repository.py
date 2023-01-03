@@ -8,9 +8,8 @@ class BinanceBotRepository:
     def __get_connection(self):
         #DATABASE_URL = os.environ['DATABASE_URL']
         #connection = psycopg2.connect(dbname="postgres", user="glebza",password="glebzaDb1",hostaddr="45.141.76.98",port="5432")
-        connection = psycopg2.connect(dbname="postgres", user="postgres",password="postgres",hostaddr="127.0.0.1",port="5433")
+        connection = psycopg2.connect("dbname='postgres' user='postgres' password='postgres' host='localhost' port=5433")
         return connection
-
 
     def save_order(self, order):
         con = self.__get_connection()

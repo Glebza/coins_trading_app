@@ -1,3 +1,6 @@
 python-binance
 numpy
 psycopg2
+TA-Lib
+websockets
+websocket-client
