@@ -5,16 +5,18 @@ from binance import Client, ThreadedWebsocketManager, ThreadedDepthCacheManager
 from binance import ThreadedWebsocketManager
 from binance.enums import *
 from repository.binance_bot_repository import BinanceBotRepository
+from talib import MA_Type
 from binance.exceptions import BinanceAPIException
 
+PROFIT_RATE = 5
 API_KEY = os.environ['API_KEY']
 API_SECRET = os.environ['API_SECRET']
 client = Client(API_KEY, API_SECRET)
-symbol = 'BTCUSDT'
+SYMBOL = 'BTCUSDT'
 RSI_PERIOD = 15
-RSI_OVERSOLD = 45
+RSI_OVERSOLD = 50
 RSI_OVERBOUGHT = 70
-START_CASH = 400
+START_CASH = 450
 
 
 def warm_up(client, ticker):
@@ -23,7 +25,7 @@ def warm_up(client, ticker):
     closes = []
     end_date = datetime.now()
     start_date = (end_date - timedelta(days=1)).strftime("%d/%m/%Y, %H:%M:%S")
-    klines = client.get_historical_klines(symbol, Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
+    klines = client.get_historical_klines(SYMBOL, Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
     start_interval = 0
     open_p = 1
     high = 2
@@ -33,15 +35,79 @@ def warm_up(client, ticker):
     for kline in klines:
         volumes.append(float(kline[volume]))
         closes.append(float(kline[close]))
-    return (closes, volumes)
+    return closes, volumes
 
 
-warm_data = warm_up(client, symbol)
+warm_data = warm_up(client, SYMBOL)
 volumes = warm_data[1]
 close_prices = warm_data[0]
-print(close_prices)
 repository = BinanceBotRepository()
-order = repository.get_open_deal_order(symbol)
+sell_order = None
+buy_order = repository.get_open_deal_order(SYMBOL)
+if buy_order is not None:
+    print('There is an open deal: ')
+    print(buy_order)
+
+
+# start is required to initialise its internal loop
+def handle_socket_message(ws, msg):
+    print(msg)
+    global buy_order
+    global sell_order
+    global SYMBOL
+    global repository
+
+    candle = json.loads(msg)['k']
+    is_candle_closed = candle['x']
+    closed_price = float(candle['c'])
+    volume = candle['v']
+    upper, middle, lower = talib.BBANDS(numpy.array(close_prices), matype=MA_Type.T3)
+
+    sell_order_status = check_order_status(sell_order, SYMBOL, repository)
+    if sell_order_status == ORDER_STATUS_FILLED:
+        print('the deal is closed: open order {}, close order {}'.format(buy_order['orderId'], sell_order['orderId']))
+        buy_order = None
+        sell_order = None
+
+    # try to catch the price peaks
+    if buy_order and upper[-1] - buy_order['price'] > 2 * PROFIT_RATE:
+        sell_order = close_deal(closed_price, buy_order, repository, SYMBOL)
+
+    if is_candle_closed:
+        close_prices.append(float(closed_price))
+        volumes.append(float(volume))
+        np_closes = numpy.array(close_prices)
+        np_volumes = numpy.array(volumes)
+        rsi = talib.RSI(np_closes, RSI_PERIOD)
+        obv = talib.OBV(np_closes, np_volumes)
+        ma = talib.MA(np_closes, RSI_PERIOD)
+        macd, signal, macd_diff = talib.MACD(np_closes, fastperiod=12, slowperiod=26, signalperiod=9)
+
+        print('rsi = {}, upper = {},middle = {},lower ={}  macd upcross? {}'.format( rsi[-1], upper[-1], middle[-1], lower[-1],
+                                                                                      macd[-1] > signal[-1] and macd[-2] <= signal[-2]))
+        print("----")
+
+        if buy_order:
+            if sell_order:
+                return
+            status = check_order_status(buy_order, SYMBOL, repository)
+            if status != ORDER_STATUS_FILLED:
+                return
+
+            diff = float(closed_price) - float(buy_order['price'])
+            print("diff = {}".format(diff))
+            if diff >= PROFIT_RATE:
+                print('sell!')
+                sell_order = close_deal(closed_price, buy_order, repository, SYMBOL)
+        else:
+            if rsi[-1] < RSI_OVERSOLD \
+                    and macd[-1] > signal[-1] and macd[-2] <= signal[-2] and macd[-1] < 0:
+                qty = round(START_CASH / closed_price, 5)
+                print('buy! qty = {}'.format(qty))
+                buy_order = place_order(client, SYMBOL, Client.SIDE_BUY, closed_price, float(qty))
+                repository.save_order(order=buy_order)
+                repository.save_deal(buy_order)
+
 
 def place_order(client, symbol, side, price, quantity):
     order = None
@@ -60,64 +126,20 @@ def place_order(client, symbol, side, price, quantity):
     return order
 
 
-# start is required to initialise its internal loop
-def handle_socket_message(ws, msg):
-    global order
-    global symbol
-    global repository
+def close_deal(closed_price, order, repository, symbol):
+    sell_order = place_order(client, symbol, Client.SIDE_SELL, closed_price, order['executedQty'])
+    repository.save_order(order=sell_order)
+    repository.update_deal(order, sell_order)
+    return sell_order
 
-    candle = json.loads(msg)['k']
-    is_candle_closed = candle['x']
-    closed_price = float(candle['c'])
-    volume = candle['v']
 
-    if is_candle_closed:
-        close_prices.append(float(closed_price))
-        volumes.append(float(volume))
-        np_closes = numpy.array(close_prices)
-        np_volumes = numpy.array(volumes)
-        rsi = talib.RSI(np_closes, RSI_PERIOD)
-        obv = talib.OBV(np_closes, np_volumes)
-        ma = talib.MA(np_closes, RSI_PERIOD)
-        macd, signal, macd_diff = talib.MACD(np_closes, fastperiod=12, slowperiod=26, signalperiod=9)
-        prev_rsi = rsi[-2]
-        # print('prev rsi {} '.format(prev_rsi))
-        # print('rsi {} '.format(rsi[-1]))
-        # print('prev cl price  {} '.format(close_prices[-2]))
-        # print('cl price {} '.format(closed_price))
-        # print('ma {} '.format(ma[-1]))
-        # print('prev obv {} '.format(obv[-2]))
-        # print('obv {} '.format(obv[-1]))
-        # print('rsi < oversold < prev_rsi {} '.format((prev_rsi < RSI_OVERSOLD < rsi[-1])))
-        # print('close_price >= ma {} '.format((closed_price >= ma[-1])))
-        # print('prev_obv < obv {} '.format((obv[-2] < obv[-1])))
-        # print('prev_c < c {} '.format((close_prices[-2] < closed_price)))
-        print('rsi = {}, closed_price = {}, macd  = {} ,signal {},  diff =  {}, macd upcross? {}'.format(closed_price, rsi[-1], macd[-1], signal[-1],
-                                                                                      macd_diff[-1],macd[-1] > signal[-1] and macd[-2] <= signal[-2]))
-        print("----")
-
-        if order:
-            if order.status != ORDER_STATUS_FILLED:
-                status = client.get_order(symbol=symbol, orderId=order.orderId)
-                repository.update_order_status(order_id=order.orderId, status=status)
-                return
-
-            diff = closed_price - order['price']
-            print("diff = {}".format(diff))
-            if diff >= 5:
-                print('sell!')
-                sell_order = place_order(client, symbol, Client.SIDE_SELL, closed_price, order.executedQty)
-                repository.save_order(order=order)
-                repository.update_deal(order, sell_order)
-                order = None
-        else:
-            if rsi[-1] < RSI_OVERSOLD \
-                    and macd[-1] > signal[-1] and macd[-2] <= signal[-2] and macd[-1] < 0:
-                qty = round(START_CASH / closed_price, 5)
-                print('buy! qty = {}'.format(qty))
-                order = place_order(client, symbol, Client.SIDE_BUY, closed_price, float(qty))
-                repository.save_order(order=order)
-                repository.save_deal(order)
+def check_order_status(order, symbol, repository):
+    if order and order['status'] != ORDER_STATUS_FILLED:
+        order = client.get_order(symbol=symbol, orderId=order['orderId'])
+        status = order['status']
+        repository.update_order_status(order_id=order['orderId'], status=status,
+                                       executedqty=order['executedQty'])
+    return status
 
 
 def on_error(ws, error):
@@ -128,14 +150,14 @@ def on_close(ws, txt, error):
     print("### closed ### {}".format(ws))
 
 
-print('start listening {}'.format(symbol))
+print('start listening {}'.format(SYMBOL))
 
 # order = place_order(client, symbol, Client.SIDE_BUY,float(36300), 0.001684)
 # order = {'symbol': 'BTCUSDT', 'orderId': 6183087675, 'orderListId': -1, 'clientOrderId': 'hzf8ut8BgIrCUh7Ey4kdgC', 'transactTime': 1622133593112, 'price': '38900.00000000', 'origQty': '0.00168400', 'executedQty': '0.00168400', 'cummulativeQuoteQty': '65.42289480', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'LIMIT', 'side': 'BUY', 'fills': [{'price': '38849.70000000', 'qty': '0.00168400', 'commission': '0.00000168', 'commissionAsset': 'BTC', 'tradeId': 875740731}]}
 
-twm = ThreadedWebsocketManager(api_key=API_KEY, api_secret=API_SECRET)
-twm.start()
-twm.start_kline_socket(callback=handle_socket_message, symbol=symbol, interval=KLINE_INTERVAL_15MINUTE)
+#twm = ThreadedWebsocketManager(api_key=API_KEY, api_secret=API_SECRET)
+#twm.start()
+#twm.start_kline_socket(callback=handle_socket_message, symbol=symbol, interval=KLINE_INTERVAL_1MINUTE)
 
 SOCKET = 'wss://stream.binance.com:443/ws/btcusdt@kline_1m'
 websocket.enableTrace(False)

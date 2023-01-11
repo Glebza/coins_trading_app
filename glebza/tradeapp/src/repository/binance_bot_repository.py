@@ -1,4 +1,5 @@
 import psycopg2
+import psycopg2.extras
 from datetime import datetime
 import os
 
@@ -45,15 +46,15 @@ class BinanceBotRepository:
         con.commit()
         con.close()
 
-    def update_order_status(self, order_id, status):
+    def update_order_status(self, order_id, status,executedqty):
         print(order_id)
         print(status)
         con = self.__get_connection()
         cur = con.cursor()
         cur.execute('''
-        update orders set status=%s 
+        update orders set status=%s , executedQty=%s
         where id =%s
-        ''', (status, order_id))
+        ''', (status, executedqty, order_id))
         con.commit()
         con.close()
 
@@ -93,19 +94,26 @@ class BinanceBotRepository:
     def get_open_deal_order(self,symbol):
         order = None
         con = self.__get_connection()
-        cur = con.cursor()
+        cur = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
         cur.execute('''
-                       select * from deals d join coins c 
+                       select d.id,buy_order_id from deals d join coins c 
                        on d.ticker_id = c.id
                        where d.sell_order_id is null and c.ticker = %s
                        ''', (symbol,))
         deal = cur.fetchone()
         if deal is not None:
+            deal = dict(deal)
             cur.execute('''
-                            select * from orders
+                            select id,ticker_id,orderlistid
+                            ,clientorderid,transacttime,price,origqty,executedqty,status,type,side  from orders
                             where id =%s
-                            ''', (deal.buy_order_id,))
+                            ''', (deal['id'],))
             order = cur.fetchone()
+            if order:
+                order = dict(order)
+                order['orderId'] = order.pop('id')
+                order['executedQty'] = order.pop('executedqty')
+
         con.close()
         return order
 
