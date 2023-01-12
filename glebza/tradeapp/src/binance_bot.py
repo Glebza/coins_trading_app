@@ -51,7 +51,6 @@ if buy_order is not None:
 
 # start is required to initialise its internal loop
 def handle_socket_message(ws, msg):
-    print(msg)
     global buy_order
     global sell_order
     global SYMBOL
@@ -70,7 +69,7 @@ def handle_socket_message(ws, msg):
         sell_order = None
 
     # try to catch the price peaks
-    if buy_order and upper[-1] - buy_order['price'] > 2 * PROFIT_RATE:
+    if buy_order and float(upper[-1]) - float(buy_order['price']) > 2 * PROFIT_RATE:
         sell_order = close_deal(closed_price, buy_order, repository, SYMBOL)
 
     if is_candle_closed:
@@ -101,7 +100,7 @@ def handle_socket_message(ws, msg):
                 sell_order = close_deal(closed_price, buy_order, repository, SYMBOL)
         else:
             if rsi[-1] < RSI_OVERSOLD \
-                    and macd[-1] > signal[-1] and macd[-2] <= signal[-2] and macd[-1] < 0:
+                    and macd[-1] >= signal[-1] and macd[-2] < signal[-2] and macd[-1] < 0:
                 qty = round(START_CASH / closed_price, 5)
                 print('buy! qty = {}'.format(qty))
                 buy_order = place_order(client, SYMBOL, Client.SIDE_BUY, closed_price, float(qty))
@@ -134,6 +133,7 @@ def close_deal(closed_price, order, repository, symbol):
 
 
 def check_order_status(order, symbol, repository):
+    status = None
     if order and order['status'] != ORDER_STATUS_FILLED:
         order = client.get_order(symbol=symbol, orderId=order['orderId'])
         status = order['status']
