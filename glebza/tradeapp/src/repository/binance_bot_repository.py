@@ -48,6 +48,7 @@ class BinanceBotRepository:
     def update_order_status(self, order_id, status,executedqty):
         print(order_id)
         print(status)
+        print('executedqty = {}'.format(executedqty))
         con = self.__get_connection()
         cur = con.cursor()
         cur.execute('''
@@ -106,7 +107,7 @@ class BinanceBotRepository:
                             select id,ticker_id,orderlistid
                             ,clientorderid,transacttime,price,origqty,executedqty,status,type,side  from orders
                             where id =%s
-                            ''', (deal['id'],))
+                            ''', (deal['buy_order_id'],))
             order = cur.fetchone()
             if order:
                 order = dict(order)

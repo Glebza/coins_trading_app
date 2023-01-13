@@ -47,6 +47,8 @@ buy_order = repository.get_open_deal_order(SYMBOL)
 if buy_order is not None:
     print('There is an open deal: ')
     print(buy_order)
+else:
+    print('There is no an open deal: ')
 
 
 # start is required to initialise its internal loop
@@ -62,14 +64,16 @@ def handle_socket_message(ws, msg):
     volume = candle['v']
     upper, middle, lower = talib.BBANDS(numpy.array(close_prices), matype=MA_Type.T3)
 
-    sell_order_status = check_order_status(sell_order, SYMBOL, repository)
-    if sell_order_status == ORDER_STATUS_FILLED:
+    buy_order = update_order_status(buy_order, SYMBOL, repository)
+    sell_order = update_order_status(sell_order, SYMBOL, repository)
+    if sell_order and sell_order['status'] == ORDER_STATUS_FILLED:
         print('the deal is closed: open order {}, close order {}'.format(buy_order['orderId'], sell_order['orderId']))
         buy_order = None
         sell_order = None
 
     # try to catch the price peaks
     if buy_order and float(upper[-1]) - float(buy_order['price']) > 2 * PROFIT_RATE:
+        print('peak detected!')
         sell_order = close_deal(closed_price, buy_order, repository, SYMBOL)
 
     if is_candle_closed:
@@ -82,15 +86,15 @@ def handle_socket_message(ws, msg):
         ma = talib.MA(np_closes, RSI_PERIOD)
         macd, signal, macd_diff = talib.MACD(np_closes, fastperiod=12, slowperiod=26, signalperiod=9)
 
-        print('rsi = {}, upper = {},middle = {},lower ={}  macd upcross? {}'.format( rsi[-1], upper[-1], middle[-1], lower[-1],
+        print('prev_rsi = {}, macd = {},signal = {},macd_diff ={}  macd upcross? {}'.format( rsi[-2], macd[-1], signal[-1], macd_diff[-1],
                                                                                       macd[-1] > signal[-1] and macd[-2] <= signal[-2]))
         print("----")
 
         if buy_order:
             if sell_order:
                 return
-            status = check_order_status(buy_order, SYMBOL, repository)
-            if status != ORDER_STATUS_FILLED:
+            buy_order = update_order_status(buy_order, SYMBOL, repository)
+            if buy_order and buy_order['status'] != ORDER_STATUS_FILLED:
                 return
 
             diff = float(closed_price) - float(buy_order['price'])
@@ -99,8 +103,8 @@ def handle_socket_message(ws, msg):
                 print('sell!')
                 sell_order = close_deal(closed_price, buy_order, repository, SYMBOL)
         else:
-            if rsi[-1] < RSI_OVERSOLD \
-                    and macd[-1] >= signal[-1] and macd[-2] < signal[-2] and macd[-1] < 0:
+            if rsi[-2] < RSI_OVERSOLD \
+                    and macd[-1] > signal[-1] and macd[-2] <= signal[-2] and macd[-1] < 0:
                 qty = round(START_CASH / closed_price, 5)
                 print('buy! qty = {}'.format(qty))
                 buy_order = place_order(client, SYMBOL, Client.SIDE_BUY, closed_price, float(qty))
@@ -132,14 +136,15 @@ def close_deal(closed_price, order, repository, symbol):
     return sell_order
 
 
-def check_order_status(order, symbol, repository):
-    status = None
-    if order and order['status'] != ORDER_STATUS_FILLED:
-        order = client.get_order(symbol=symbol, orderId=order['orderId'])
-        status = order['status']
-        repository.update_order_status(order_id=order['orderId'], status=status,
-                                       executedqty=order['executedQty'])
-    return status
+def update_order_status(order, symbol, repository):
+    if order:
+        if order['status'] != ORDER_STATUS_FILLED:
+            order = client.get_order(symbol=symbol, orderId=order['orderId'])
+            status = order['status']
+            repository.update_order_status(order_id=order['orderId'], status=status,
+                                           executedqty=order['executedQty'])
+
+    return order
 
 
 def on_error(ws, error):
