@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-import json, pprint, numpy, talib, os
+import json, numpy, talib, os
 import websocket
 from binance import Client, ThreadedWebsocketManager, ThreadedDepthCacheManager
 from binance import ThreadedWebsocketManager
@@ -7,20 +7,23 @@ from binance.enums import *
 from repository.binance_bot_repository import BinanceBotRepository
 from talib import MA_Type
 from binance.exceptions import BinanceAPIException
+import logging
 
+logging.basicConfig(format='%(levelname)s: %(asctime)s %(message)s', level=logging.DEBUG)
 PROFIT_RATE = 5
 API_KEY = os.environ['API_KEY']
 API_SECRET = os.environ['API_SECRET']
-client = Client(API_KEY, API_SECRET)
 SYMBOL = 'BTCUSDT'
 RSI_PERIOD = 15
 RSI_OVERSOLD = 50
 RSI_OVERBOUGHT = 70
-START_CASH = 450
+START_CASH = 530
+
+client = Client(API_KEY, API_SECRET)
 
 
 def warm_up(client, ticker):
-    print(ticker)
+    logging.info(ticker)
     volumes = []
     closes = []
     end_date = datetime.now()
@@ -45,10 +48,10 @@ repository = BinanceBotRepository()
 sell_order = None
 buy_order = repository.get_open_deal_order(SYMBOL)
 if buy_order is not None:
-    print('There is an open deal: ')
-    print(buy_order)
+    logging.info('There is an open deal: ')
+    logging.info(buy_order)
 else:
-    print('There is no an open deal: ')
+    logging.info('There is no an open deal: ')
 
 
 # start is required to initialise its internal loop
@@ -62,19 +65,25 @@ def handle_socket_message(ws, msg):
     is_candle_closed = candle['x']
     closed_price = float(candle['c'])
     volume = candle['v']
-    upper, middle, lower = talib.BBANDS(numpy.array(close_prices), matype=MA_Type.T3)
+    upper, middle, lower = talib.BBANDS(numpy.array(close_prices),timeperiod=21, matype=MA_Type.T3)
 
     buy_order = update_order_status(buy_order, SYMBOL, repository)
     sell_order = update_order_status(sell_order, SYMBOL, repository)
     if sell_order and sell_order['status'] == ORDER_STATUS_FILLED:
-        print('the deal is closed: open order {}, close order {}'.format(buy_order['orderId'], sell_order['orderId']))
+        logging.info('the deal is closed: open order {}, close order {}'.format(buy_order['orderId'], sell_order['orderId']))
         buy_order = None
         sell_order = None
+    else:
+        # try to catch the price's peaks
+        if buy_order and float(closed_price) > float(buy_order['price']) and (float(closed_price) - float(upper[-1]) > 2 * PROFIT_RATE):
+            logging.info('peak detected! Diff {}'.format(closed_price - float(upper[-1])))
+            logging.info("price {}, upper {}, middle {}, lower {}".format(buy_order['price'], upper[-1], middle[-1], lower[-1]))
+            sell_order = close_deal(closed_price, buy_order, repository, SYMBOL)
 
-    # try to catch the price peaks
-    if buy_order and float(upper[-1]) - float(buy_order['price']) > 2 * PROFIT_RATE:
-        print('peak detected!')
-        sell_order = close_deal(closed_price, buy_order, repository, SYMBOL)
+    if not buy_order and (float(lower[-1]) - float(closed_price) > 2 * PROFIT_RATE):
+        logging.info('pit detected! Diff {}'.format(lower[-1] - float(closed_price)))
+        logging.info("price {}, upper {}, middle {}, lower {}".format(closed_price, upper[-1], middle[-1], lower[-1]))
+        buy_order = open_deal(SYMBOL, closed_price, repository)
 
     if is_candle_closed:
         close_prices.append(float(closed_price))
@@ -86,9 +95,9 @@ def handle_socket_message(ws, msg):
         ma = talib.MA(np_closes, RSI_PERIOD)
         macd, signal, macd_diff = talib.MACD(np_closes, fastperiod=12, slowperiod=26, signalperiod=9)
 
-        print('prev_rsi = {}, macd = {},signal = {},macd_diff ={}  macd upcross? {}'.format( rsi[-2], macd[-1], signal[-1], macd_diff[-1],
+        logging.info('prev_rsi = {}, macd = {},signal = {},macd_diff ={}  macd upcross? {}'.format(rsi[-2], macd[-1], signal[-1], macd_diff[-1],
                                                                                       macd[-1] > signal[-1] and macd[-2] <= signal[-2]))
-        print("----")
+        logging.info("----")
 
         if buy_order:
             if sell_order:
@@ -98,18 +107,23 @@ def handle_socket_message(ws, msg):
                 return
 
             diff = float(closed_price) - float(buy_order['price'])
-            print("diff = {}".format(diff))
+            logging.info("diff = {}".format(diff))
             if diff >= PROFIT_RATE:
-                print('sell!')
+                logging.info('sell!')
                 sell_order = close_deal(closed_price, buy_order, repository, SYMBOL)
         else:
             if rsi[-2] < RSI_OVERSOLD \
                     and macd[-1] > signal[-1] and macd[-2] <= signal[-2] and macd[-1] < 0:
-                qty = round(START_CASH / closed_price, 5)
-                print('buy! qty = {}'.format(qty))
-                buy_order = place_order(client, SYMBOL, Client.SIDE_BUY, closed_price, float(qty))
-                repository.save_order(order=buy_order)
-                repository.save_deal(buy_order)
+                buy_order = open_deal(SYMBOL, closed_price, repository)
+
+
+def open_deal(symbol, closed_price, repository):
+    qty = round(START_CASH / closed_price, 5)
+    logging.info('buy! qty = {}'.format(qty))
+    order = place_order(client, symbol, Client.SIDE_BUY, closed_price, float(qty))
+    repository.save_order(order=order)
+    repository.save_deal(order)
+    return order
 
 
 def place_order(client, symbol, side, price, quantity):
@@ -123,9 +137,9 @@ def place_order(client, symbol, side, price, quantity):
             quantity=quantity,
             price=price
         )
-        print(order)
+        logging.info(order)
     except Exception as e:
-        print(e)
+        logging.info(e)
     return order
 
 
@@ -148,14 +162,14 @@ def update_order_status(order, symbol, repository):
 
 
 def on_error(ws, error):
-    print(error)
+    logging.info(error)
 
 
 def on_close(ws, txt, error):
-    print("### closed ### {}".format(ws))
+    logging.info("### closed ### {}".format(ws))
 
 
-print('start listening {}'.format(SYMBOL))
+logging.info('start listening {}'.format(SYMBOL))
 
 # order = place_order(client, symbol, Client.SIDE_BUY,float(36300), 0.001684)
 # order = {'symbol': 'BTCUSDT', 'orderId': 6183087675, 'orderListId': -1, 'clientOrderId': 'hzf8ut8BgIrCUh7Ey4kdgC', 'transactTime': 1622133593112, 'price': '38900.00000000', 'origQty': '0.00168400', 'executedQty': '0.00168400', 'cummulativeQuoteQty': '65.42289480', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'LIMIT', 'side': 'BUY', 'fills': [{'price': '38849.70000000', 'qty': '0.00168400', 'commission': '0.00000168', 'commissionAsset': 'BTC', 'tradeId': 875740731}]}
