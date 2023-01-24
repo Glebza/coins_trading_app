@@ -15,7 +15,7 @@ class BinanceBotRepository:
         con = self.__get_connection()
         cur = con.cursor()
         ticker_id = self.__get_ticker_id(con,order['symbol'])
-        transact_time = datetime.fromtimestamp(order['transactTime']/1000)
+        transact_time = datetime.fromtimestamp(order['time']/1000)
         print(transact_time)
         cur.execute('''
         insert into orders (id
@@ -62,7 +62,7 @@ class BinanceBotRepository:
         con = self.__get_connection()
         cur = con.cursor()
         symbol_id = self.__get_ticker_id(con,order['symbol'])
-        transact_time = datetime.fromtimestamp(order['transactTime'] / 1000)
+        transact_time = datetime.fromtimestamp(order['time'] / 1000)
         cur.execute('''insert into deals(buy_order_id,start_date,ticker_id) values (%s,%s,%s)'''
                     ,(order['orderId'],transact_time,symbol_id ))
         con.commit()
@@ -71,7 +71,7 @@ class BinanceBotRepository:
     def update_deal(self,buy_order,sell_order):
         con = self.__get_connection()
         cur = con.cursor()
-        transact_time = datetime.fromtimestamp(sell_order['transactTime'] / 1000)
+        transact_time = datetime.fromtimestamp(sell_order['time'] / 1000)
         cur.execute('''
                 update deals 
                 set sell_order_id=%s, end_date =%s
