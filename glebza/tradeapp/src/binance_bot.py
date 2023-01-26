@@ -16,7 +16,7 @@ API_KEY = os.environ['API_KEY']
 API_SECRET = os.environ['API_SECRET']
 SYMBOL = 'BTCUSDT'
 RSI_PERIOD = 15
-RSI_OVERSOLD = 50
+RSI_OVERSOLD = 52
 RSI_OVERBOUGHT = 70
 START_CASH = 530
 
@@ -104,10 +104,10 @@ def handle_socket_message(ws, msg):
                 "price {}, upper {}, middle {}, lower {}".format(buy_order['price'], upper[-1], middle[-1], lower[-1]))
             sell_order = close_deal(SYMBOL, repository, closed_price, buy_order)
 
-    if not buy_order and (float(lower[-1]) - float(closed_price) > 2 * PROFIT_RATE):
-        logging.info('pit detected! Diff {}'.format(lower[-1] - float(closed_price)))
-        logging.info("price {}, upper {}, middle {}, lower {}".format(closed_price, upper[-1], middle[-1], lower[-1]))
-        buy_order = open_deal(SYMBOL, repository, closed_price)
+    # if not buy_order and (float(lower[-1]) - float(closed_price) > 2 * PROFIT_RATE):
+    #     logging.info('pit detected! Diff {}'.format(lower[-1] - float(closed_price)))
+    #     logging.info("price {}, upper {}, middle {}, lower {}".format(closed_price, upper[-1], middle[-1], lower[-1]))
+    #     buy_order = open_deal(SYMBOL, repository, closed_price)
 
     if is_candle_closed:
         close_prices.append(float(closed_price))
@@ -139,7 +139,7 @@ def open_deal(symbol, repository, closed_price):
     global do_buy
     qty = round(START_CASH / closed_price, 5)
     side = Client.SIDE_BUY
-    order = execute_order(client, float(closed_price) + 0.1, float(qty), repository, side, symbol)
+    order = execute_order(client, closed_price, float(qty), repository, side, symbol)
     if order['status'] != ORDER_STATUS_FILLED:
         do_buy = True
         logging.info('Buy failed!')
