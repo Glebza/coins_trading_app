@@ -233,7 +233,7 @@ logging.info('start listening {}'.format(SYMBOL))
 # twm = ThreadedWebsocketManager(api_key=API_KEY, api_secret=API_SECRET)
 # twm.start()
 # twm.start_kline_socket(callback=handle_socket_message, symbol=symbol, interval=KLINE_INTERVAL_1MINUTE)
-#twm.join()
+# twm.join()
 SOCKET = 'wss://stream.binance.com:443/ws/btcusdt@kline_1m'
 websocket.enableTrace(False)
 ws = websocket.WebSocketApp(SOCKET,
