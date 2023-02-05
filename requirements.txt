@@ -4,3 +4,4 @@ psycopg2
 TA-Lib
 websockets
 websocket-client
+ciso8601

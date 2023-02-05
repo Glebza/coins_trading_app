@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 import json, numpy, talib, os
 import websocket
 from binance import Client, ThreadedWebsocketManager, ThreadedDepthCacheManager
-from binance import ThreadedWebsocketManager
 from binance.enums import *
 from repository.binance_bot_repository import BinanceBotRepository
 from talib import MA_Type
@@ -11,14 +10,14 @@ import logging
 import time
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s %(message)s', level=logging.DEBUG)
-PROFIT_RATE = 5
+PROFIT_RATE = 8
 API_KEY = os.environ['API_KEY']
 API_SECRET = os.environ['API_SECRET']
 SYMBOL = 'BTCUSDT'
 RSI_PERIOD = 15
 RSI_OVERSOLD = 52
 RSI_OVERBOUGHT = 70
-START_CASH = 530
+START_CASH = 700
 
 client = Client(API_KEY, API_SECRET)
 repository = BinanceBotRepository()

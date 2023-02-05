@@ -10,7 +10,6 @@ class BinanceBotRepository:
     def __get_connection(self):
 
         database_url = os.environ['DATABASE_URL']
-        print(database_url)
         connection = psycopg2.connect(database_url)
         return connection
 
@@ -25,7 +24,6 @@ class BinanceBotRepository:
         cur = conn.cursor()
         ticker_id = self.__get_ticker_id(conn, order['symbol'])
         transact_time = datetime.fromtimestamp(order['time'] / 1000)
-        print(transact_time)
         cur.execute('''
         insert into orders (id
         ,ticker_id
@@ -212,6 +210,7 @@ class BinanceBotRepository:
         return deal
 
     def delete_deal_by_id(self, buy_order_id):
+        conn = None
         rows_deleted = 0
         try:
             conn = self.__get_connection()

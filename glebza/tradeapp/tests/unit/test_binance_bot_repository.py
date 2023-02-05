@@ -4,7 +4,7 @@ from repository.binance_bot_repository import BinanceBotRepository
 import datetime
 
 
-class RepositoryOrderTestCase(unittest.TestCase):
+class OrderRepositoryTestCase(unittest.TestCase):
 
     def setUp(self):
         self.repository = BinanceBotRepository()
@@ -29,7 +29,9 @@ class RepositoryOrderTestCase(unittest.TestCase):
                              'status': 'FILLED',
                              'ticker_id': 1,
                              'transacttime': datetime.datetime(2023, 1, 26, 8, 48, 31, 618000),
-                             'type': 'LIMIT'})
+                             'type': 'LIMIT',
+                             'symbol': 'BTCUSDT',
+                             'time': 1674685872599})
         order = self.repository.get_order_by_id(binance_order['orderId'])
         self.assertEqual(target_order, order)
 
@@ -37,7 +39,7 @@ class RepositoryOrderTestCase(unittest.TestCase):
         self.repository.delete_order_by_id(self.order_id)
 
 
-class RepositoryDealTestCase(unittest.TestCase):
+class DealRepositoryTestCase(unittest.TestCase):
 
     def setUp(self):
         self.repository = BinanceBotRepository()
@@ -93,7 +95,9 @@ class RepositoryDealTestCase(unittest.TestCase):
                              'status': 'FILLED',
                              'ticker_id': 1,
                              'transacttime': datetime.datetime(2023, 1, 26, 1, 31, 12, 599000),
-                             'type': 'LIMIT'})
+                             'type': 'LIMIT',
+                             'symbol': 'BTCUSDT',
+                             'time': 1674685872599,})
         self.assertEqual(target_order, order)
 
     def tearDown(self):
