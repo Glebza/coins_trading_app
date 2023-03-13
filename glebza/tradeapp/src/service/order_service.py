@@ -64,3 +64,19 @@ def cancel_order(client, symbol, order):
     except Exception as e:
         logging.error(e)
     return order
+
+
+def update_order_status(client, order, symbol):
+    if order:
+        if order['status'] != ORDER_STATUS_FILLED:
+            order = client.get_order(symbol=symbol, orderId=order['orderId'])
+            status = order['status']
+            repository.update_order_status(order_id=order['orderId'], status=status,
+                                           executedqty=order['executedQty'])
+
+    return order
+
+
+def get_open_deal_order(symbol):
+    return repository.get_open_deal_order(symbol)
+

@@ -7,6 +7,10 @@ import os
 
 class BinanceBotRepository:
 
+    def __init__(self):
+        print('init repository class')
+
+
     def __get_connection(self):
 
         database_url = os.environ['DATABASE_URL']
