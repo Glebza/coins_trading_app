@@ -4,10 +4,11 @@ import websocket
 from binance import Client
 from binance.enums import *
 import service.order_service as service
-import strategies.boll_macd_rsi as strategy
+import strategies.deviations as strategy
 import service.market_service as market_service
 import logging
 import time
+import sys
 
 CLOSE_INTERVAL = 'T'
 
@@ -34,12 +35,19 @@ if buy_order is not None:
 else:
     logging.info('There is no open deal: ')
 
+warm_data = None
+if len(sys.argv) > 0:
+    warm_data = market_service.warm_up(client, SYMBOL, sys.argv[0], sys.argv[1])
+else:
+    warm_data = market_service.warm_up(client, SYMBOL)
 
-warm_data = market_service.warm_up(client, SYMBOL)
 close_prices = warm_data[0]
-
+high_prices = warm_data[2]
+low_prices = warm_data[3]
+strategy.prepare(warm_data)
 
 # start is required to initialise its internal loop
+# TODO   реализовать teardown
 def handle_socket_message(ws, msg):
     global buy_order
     global sell_order
@@ -48,6 +56,8 @@ def handle_socket_message(ws, msg):
     st = time.time()
     candle = json.loads(msg)['k']
     closed_price = float(candle['c'])
+    high_price = float(candle['h'])
+    low_price = float(candle['l'])
 
     if buy_order and buy_order['status'] != ORDER_STATUS_FILLED:
         qty = round(START_CASH / closed_price, 5)
@@ -67,9 +77,12 @@ def handle_socket_message(ws, msg):
         sell_order = None
 
     if candle[IS_CANDLE_CLOSE]:
-        close_prices.append(float(closed_price))
+        close_prices.append(closed_price)
+        high_prices.append(high_price)
+        low_prices.append(low_price)
+        prices = closed_price,high_prices,low_prices
         logging.info("----")
-        track = strategy.process(close_prices, candle[CLOSE_INTERVAL], buy_order)
+        track = strategy.process(prices, candle[CLOSE_INTERVAL], buy_order)
 
         if track['action'] == ACTION_SELL:
             logging.info('sell!')

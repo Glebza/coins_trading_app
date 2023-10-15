@@ -12,7 +12,8 @@ RSI_OVERSOLD = 50
 RSI_PERIOD = 15
 
 
-def process(close_prices, current_interval, order):
+def process(prices, current_interval, order):
+    close_prices = prices[0]
     track = dict({'action': 'WAIT', 'price': 0})
     # Делаем своеобразный наивный прогноз, что следующая цена не будет отличаться.
     # Так мы можем попытаться предсказать пересечет ли MACD линию Sygnal.
