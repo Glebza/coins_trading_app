@@ -5,11 +5,15 @@ from binance.enums import *
 
 DEAL_DEADLINE_MILLISECONDS = 120000
 
-PROFIT_RATE = 7
+PROFIT_RATE = 15
 
 RSI_OVERSOLD = 50
 
 RSI_PERIOD = 15
+
+
+def prepare(args):
+    print('strategy doesn\'t need additional preparations')
 
 
 def process(prices, current_interval, order):
@@ -25,8 +29,8 @@ def process(prices, current_interval, order):
 
     if order is not None and order['status'] == ORDER_STATUS_FILLED:
         if (float(close_prices[-1]) > float(order['price'])) or \
-                current_interval - order['time'] >= DEAL_DEADLINE_MILLISECONDS or\
                 (macd[-1] < signal[-1] and macd[-2] >= signal[-2]):
+                #current_interval - order['time'] >= DEAL_DEADLINE_MILLISECONDS or\
 
             track = dict({'action': 'SELL', 'price': close_prices[-1]})
     else:
