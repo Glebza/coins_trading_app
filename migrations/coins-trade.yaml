@@ -1,0 +1,123 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: gleb.skalatsky
+      labels: initial-migration
+      context: test
+      changes:
+        - createSequence:
+            dataType: integer
+            schemaName: public
+            sequenceName: coins_id_seq
+        - createSequence:
+            dataType: integer
+            schemaName: public
+            sequenceName: kline_periods_id_seq
+        - createTable:
+            tableName: coins
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticker
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+
+
+
+  - changeSet:
+      id: 2
+      author: gleb.skalatsky
+      context: test
+      changes:
+        - createTable:
+            tableName: order
+            schemaName: public
+            columns:
+            - column:
+                name: id
+                type: Integer
+                autoIncrement: true
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+            - column:
+                name: orderlistid
+                type: integer
+            - column:
+                name: clientorderid
+                type: varchar
+            - column:
+                name: transacttime
+                type: timestamp
+            - column:
+                name: price
+                type: decimal
+            - column:
+                name: origqty
+                type: decimal
+            - column:
+                name: executedqty
+                type: decimal
+            - column:
+                name: status
+                type: varchar
+            - column:
+                name: type
+                type: varchar
+            - column:
+                name: side
+                type: varchar
+  - changeSet:
+        - id: 3
+          author: gleb.skalatsky
+          context: test
+        - createTable:
+              tableName: deals
+              remarks: pairs of buy and sell orders
+              schemaName: public
+              columns:
+                  - column:
+                        name: id
+                        type: serial
+                        constraints:
+                            primaryKey: true
+                            nullable: false
+                  - column:
+                        name: buy_order_id
+                        type: integer
+                        constraints:
+                            foreignKeyName: orders
+                            referencedColumnNames: id
+                  - column:
+                        name: sell_order_id
+                        type: integer
+                        constraints:
+                            foreignKeyName: orders
+                            referencedColumnNames: id
+                  - column:
+                      name: start_date
+                      type: timestamp
+                  - column:
+                      name: end_date
+                      type: timestamp
+                  - column:
+                      name: ticker_id
+                      type: integer
+                      constraints:
+                        foreignKeyName: coins
+                        referencedColumnNames: id
+
+

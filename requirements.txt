@@ -4,3 +4,7 @@ psycopg2
 TA-Lib
 websockets
 websocket-client
+pandas
+
+sklearn
+scikit-learn

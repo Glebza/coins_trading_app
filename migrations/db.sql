@@ -61,6 +61,22 @@ create table kline_1m
     k_interval  timestamp
 );
 
+create table kline_15m
+(
+    id          serial not null
+        constraint fifteen_minutes_klines_pkey
+            primary key,
+    ticker_id   integer
+        constraint fifteen_minutes_klines_ticker_id_fkey
+            references coins,
+    open_price  double precision,
+    high_price  double precision,
+    low_price   double precision,
+    close_price double precision,
+    volume      numeric,
+    k_interval  timestamp
+);
+
 create table orders
 (
     id            numeric not null
