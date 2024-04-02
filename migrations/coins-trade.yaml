@@ -40,10 +40,98 @@ databaseChangeLog:
             tableName: order
             schemaName: public
             columns:
+              - column:
+                  name: id
+                  type: Integer
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticker_id
+                  type: integer
+                  constraints:
+                    foreignKeyName: coins
+                    referencedColumnNames: id
+              - column:
+                  name: orderlistid
+                  type: integer
+              - column:
+                  name: clientorderid
+                  type: varchar
+              - column:
+                  name: transacttime
+                  type: timestamp
+              - column:
+                  name: price
+                  type: decimal
+              - column:
+                  name: origqty
+                  type: decimal
+              - column:
+                  name: executedqty
+                  type: decimal
+              - column:
+                  name: status
+                  type: varchar
+              - column:
+                  name: type
+                  type: varchar
+              - column:
+                  name: side
+                  type: varchar
+  - changeSet:
+      - id: 3
+        author: gleb.skalatsky
+        context: test
+      - createTable:
+          tableName: deals
+          remarks: pairs of buy and sell orders
+          schemaName: public
+          columns:
             - column:
                 name: id
-                type: Integer
-                autoIncrement: true
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: buy_order_id
+                type: integer
+                constraints:
+                  foreignKeyName: orders
+                  referencedColumnNames: id
+            - column:
+                name: sell_order_id
+                type: integer
+                constraints:
+                  foreignKeyName: orders
+                  referencedColumnNames: id
+            - column:
+                name: start_date
+                type: timestamp
+            - column:
+                name: end_date
+                type: timestamp
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+
+  - changeSet:
+      - id: 4
+        author: gleb.skalatsky
+        context: test
+        label: create history tables
+      - createTable:
+          tableName: kline_1m
+          schemaName: public
+          columns:
+            - column:
+                name: id
+                type: serial
                 constraints:
                   primaryKey: true
                   nullable: false
@@ -54,70 +142,163 @@ databaseChangeLog:
                   foreignKeyName: coins
                   referencedColumnNames: id
             - column:
-                name: orderlistid
-                type: integer
+                name: open_price
+                type: decimal
             - column:
-                name: clientorderid
-                type: varchar
+                name: high_price
+                type: decimal
             - column:
-                name: transacttime
+                name: low_price
+                type: decimal
+            - column:
+                name: close_price
+                type: decimal
+            - column:
+                name: volume
+                type: numeric
+            - column:
+                name: k_interval
                 type: timestamp
+      - createTable:
+          tableName: kline_15m
+          schemaName: public
+          columns:
             - column:
-                name: price
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+            - column:
+                name: open_price
                 type: decimal
             - column:
-                name: origqty
+                name: high_price
                 type: decimal
             - column:
-                name: executedqty
+                name: low_price
                 type: decimal
             - column:
-                name: status
-                type: varchar
+                name: close_price
+                type: decimal
             - column:
-                name: type
-                type: varchar
+                name: volume
+                type: numeric
             - column:
-                name: side
-                type: varchar
+                name: k_interval
+                type: timestamp
+      - createTable:
+          tableName: kline_30m
+          schemaName: public
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+            - column:
+                name: open_price
+                type: decimal
+            - column:
+                name: high_price
+                type: decimal
+            - column:
+                name: low_price
+                type: decimal
+            - column:
+                name: close_price
+                type: decimal
+            - column:
+                name: volume
+                type: numeric
+            - column:
+                name: k_interval
+                type: timestamp
+      - createTable:
+          tableName: kline_4h
+          schemaName: public
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+            - column:
+                name: open_price
+                type: decimal
+            - column:
+                name: high_price
+                type: decimal
+            - column:
+                name: low_price
+                type: decimal
+            - column:
+                name: close_price
+                type: decimal
+            - column:
+                name: volume
+                type: numeric
+            - column:
+                name: k_interval
+                type: timestamp
+
   - changeSet:
-        - id: 3
-          author: gleb.skalatsky
-          context: test
-        - createTable:
-              tableName: deals
-              remarks: pairs of buy and sell orders
-              schemaName: public
+      id: 5
+      author: gleb.skalatsky
+      changes:
+        - insert:
+            columns:
+              - column:
+                  name: ticker
+                  value: BTCUSDT
+            dbms: 'postgresql'
+            schemaName: public
+            tableName: coins
+
+  - changeSet:
+      id: 6
+      author: gleb.skalatsky
+      changes:
+        - renameColumn:
+              oldColumnName: id
+              newColumnName: oldId
+              tableName: order
+        - addColumn:
               columns:
-                  - column:
-                        name: id
-                        type: serial
-                        constraints:
-                            primaryKey: true
-                            nullable: false
-                  - column:
-                        name: buy_order_id
-                        type: integer
-                        constraints:
-                            foreignKeyName: orders
-                            referencedColumnNames: id
-                  - column:
-                        name: sell_order_id
-                        type: integer
-                        constraints:
-                            foreignKeyName: orders
-                            referencedColumnNames: id
-                  - column:
-                      name: start_date
-                      type: timestamp
-                  - column:
-                      name: end_date
-                      type: timestamp
-                  - column:
-                      name: ticker_id
-                      type: integer
-                      constraints:
-                        foreignKeyName: coins
-                        referencedColumnNames: id
-
-
+                - column:
+                      name: id
+                      type: int
+              tableName: order
+        - dropPrimaryKey:
+              tableName: order
+        - addNotNullConstraint:
+              columnDataType: int
+              columnName: id
+              tableName: order
+        - addPrimaryKey:
+                columnNames: id
+                constraintName: order_PK
+                tableName: order
+        - dropColumn:
+                columnName: oldId
+                tableName: order

@@ -5,6 +5,8 @@ TA-Lib
 websockets
 websocket-client
 pandas
-
-sklearn
+urllib3==1.26.6
 scikit-learn
+pymexc
+requests
+telebot

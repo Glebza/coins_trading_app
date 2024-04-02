@@ -3,8 +3,9 @@ import psycopg2
 import psycopg2.extras
 from datetime import datetime
 import os
+import  logging
 
-
+logging.basicConfig(format='%(levelname)s: %(asctime)s %(message)s', level=logging.DEBUG)
 class BinanceBotRepository:
 
     def __init__(self):
@@ -26,10 +27,10 @@ class BinanceBotRepository:
     def save_order(self, order):
         conn = self.__get_connection()
         cur = conn.cursor()
-        ticker_id = self.__get_ticker_id(conn, order['symbol'])
+        ticker_id = self.__get_ticker_id(conn, order['symbol'])[0]
         transact_time = datetime.fromtimestamp(order['time'] / 1000)
         cur.execute('''
-        insert into orders (id
+        insert into order (id
         ,ticker_id
         ,orderlistid
         ,clientorderid
@@ -64,7 +65,7 @@ class BinanceBotRepository:
         conn = self.__get_connection()
         cur = conn.cursor()
         cur.execute('''
-        update orders set status=%s , executedQty=%s
+        update order set status=%s , executedQty=%s
         where id =%s
         ''', (status, executedqty, order_id))
         conn.commit()
@@ -77,7 +78,7 @@ class BinanceBotRepository:
 
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
             cur.execute('''
-                           select * from orders
+                           select * from order
                            where id =%s
                            ''', (id,))
             order = cur.fetchone()
@@ -96,7 +97,7 @@ class BinanceBotRepository:
         conn = self.__get_connection()
         cur = conn.cursor()
         cur.execute('''
-                   select * from orders
+                   select * from order
                    where status =%s
                    ''', (status,))
         orders = cur.fetchall()
@@ -111,7 +112,7 @@ class BinanceBotRepository:
 
             cur = conn.cursor()
             cur.execute('''
-                                      delete from orders
+                                      delete from order
                                       where id =%s
                                       ''', (id,))
             rows_deleted = cur.rowcount
@@ -176,7 +177,7 @@ class BinanceBotRepository:
                 deal = dict(deal)
                 cur.execute('''
                                 select id,ticker_id,orderlistid
-                                ,clientorderid,transacttime,price,origqty,executedqty,status,type,side  from orders
+                                ,clientorderid,transacttime,price,origqty,executedqty,status,type,side  from order
                                 where id =%s
                                 ''', (deal['buy_order_id'],))
                 order = cur.fetchone()
