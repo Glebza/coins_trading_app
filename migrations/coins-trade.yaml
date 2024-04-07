@@ -302,3 +302,36 @@ databaseChangeLog:
         - dropColumn:
                 columnName: oldId
                 tableName: order
+  - changeSet:
+      - id: 7
+        author: gleb.skalatsky
+        context: test
+        label: create signals table
+      - createTable:
+          tableName: signals
+          schemaName: public
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+            - column:
+                name: oi_percent_changed
+                type: real
+            - column:
+                name: cvd_percent_changed
+                type: real
+            - column:
+                name: 24h_price_change
+                type: decimal
+            - column:
+                name: dt
+                type: timestamp
