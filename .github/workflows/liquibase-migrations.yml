@@ -33,7 +33,7 @@ jobs:
         defaultSchemaName: trader
         username: ${{ secrets.LIQUIBASE_USERNAME }}
         password: ${{ secrets.LIQUIBASE_PASSWORD }}
-        url: jdbc:postgresql://${{ secrets.HOST_IP }}:5432/${{ secrets.LIQUIBASE_USERNAME }}
+        url: jdbc:postgresql://31.129.110.56:5432/trader
         
      # run: |
       #  cd ./$MIGRATIONS_PATH
