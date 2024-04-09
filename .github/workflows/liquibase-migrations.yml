@@ -27,9 +27,9 @@ jobs:
       with:
         changelogFile: glebza/tradeapp/db/changelog-root.yaml
         defaultSchemaName: trader
-        username: $LIQUIBASE_USERNAME
-        password: $LIQUIBASE_PASSWOR
-        url: jdbc:postgresql://$LIQUIBASE_DB_PROD:5432/$LIQUIBASE_USERNAME
+        username: ${{ secrets.LIQUIBASE_USERNAME }}
+        password: ${{ secrets.LIQUIBASE_PASSWORD }}
+        url: jdbc:postgresql://${{ secrets.HOST_IP }}:5432/${{ secrets.LIQUIBASE_USERNAME }}
         
      # run: |
       #  cd ./$MIGRATIONS_PATH
@@ -37,4 +37,4 @@ jobs:
       env:
         LIQUIBASE_USERNAME: ${{ secrets.LIQUIBASE_USERNAME }}
         LIQUIBASE_PASSWORD: ${{ secrets.LIQUIBASE_PASSWORD }}
-        LIQUIBASE_DB_PROD: ${{secrets.HOST_IP }}
+        LIQUIBASE_DB_PROD: ${{ secrets.HOST_IP }}
