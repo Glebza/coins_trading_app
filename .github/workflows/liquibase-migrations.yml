@@ -25,9 +25,9 @@ jobs:
     - name: Run Liquibase Migration
       uses: liquibase-github-actions/update@v4.27.0
       env:
-        LIQUIBASE_USERNAME: ${{ prod-trade-server.secrets.LIQUIBASE_USERNAME }}
-        LIQUIBASE_PASSWORD: ${{ prod-trade-server.secrets.LIQUIBASE_PASSWORD }}
-        LIQUIBASE_DB_PROD: ${{ prod-trade-server.secrets.HOST_IP }}
+        LIQUIBASE_USERNAME: ${{ secrets.LIQUIBASE_USERNAME }}
+        LIQUIBASE_PASSWORD: ${{ secrets.LIQUIBASE_PASSWORD }}
+        LIQUIBASE_DB_PROD: ${{ secrets.HOST_IP }}
       with:
         changelogFile: glebza/tradeapp/db/changelog-root.yaml
         defaultSchemaName: trader
