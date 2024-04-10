@@ -26,7 +26,7 @@ jobs:
       uses: liquibase-github-actions/update@v4.27.0
       with:
         changelogFile: glebza/tradeapp/db/changelog/changelog-root.yaml
-        defaultSchemaName: trader
+        defaultSchemaName: public
         username: ${{ secrets.LIQUIBASE_USERNAME }}
         password: ${{ secrets.LIQUIBASE_PASSWORD }}
         url: jdbc:postgresql://31.129.110.56:5432/trader
