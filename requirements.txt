@@ -4,3 +4,9 @@ psycopg2
 TA-Lib
 websockets
 websocket-client
+pandas
+urllib3==1.26.6
+scikit-learn
+pymexc
+requests
+telebot
