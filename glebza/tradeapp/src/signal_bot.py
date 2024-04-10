@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import repository.signal_bot_repository as repository
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='%(levelname)s: %(asctime)s %(message)s', filename="signal_bot.log", level=logging.INFO)
+logging.basicConfig(format='%(levelname)s: %(asctime)s %(name) at line %(lineno)  %(message)s', level=logging.INFO)
 repo = repository.SignalBotRepository()
 
 api_base_url = "https://fapi.binance.com/{}"
@@ -24,8 +24,9 @@ tickers_data = {
     "USDC" not in item['symbol']}
 hist_tickers_signal_data = repo.get_signals_count_for_today()
 if len(hist_tickers_signal_data) > 0:
-    for symbol, value in tickers_data:
-        tickers_data[symbol]["signal_count"] = hist_tickers_signal_data[symbol]["signal_count"]
+    for ticker in tickers_data:
+        if ticker in hist_tickers_signal_data:
+            tickers_data[ticker]["signal_count"] = hist_tickers_signal_data[ticker]
 
 logger.info("ticker count {}".format(len(tickers_data)))
 

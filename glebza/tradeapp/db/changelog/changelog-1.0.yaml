@@ -335,3 +335,11 @@ databaseChangeLog:
             - column:
                 name: dt
                 type: timestamp
+  - changeSet:
+      id: 8
+      author: gleb.skalatsky
+      changes:
+        - renameColumn:
+            oldColumnName: 24h_price_change
+            newColumnName: price_change_24h
+            tableName: signals

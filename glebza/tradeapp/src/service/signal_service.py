@@ -13,6 +13,7 @@ resulting_message = """1h - {} - OI {} на {}%.
 Повторение: {}"""
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(format='%(levelname)s: %(asctime)s %(name)s at line %(lineno)s  %(message)s', level=logging.INFO)
 
 
 def check_for_signal(symbol,ticker_data):
