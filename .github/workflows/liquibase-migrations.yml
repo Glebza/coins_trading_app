@@ -29,7 +29,7 @@ jobs:
         LIQUIBASE_PASSWORD: ${{ secrets.LIQUIBASE_PASSWORD }}
         LIQUIBASE_DB_PROD: ${{ secrets.HOST_IP }}
       with:
-        changelogFile: glebza/tradeapp/db/changelog/changelog-root.yaml
+        changelogFile: db/changelog/changelog-root.yaml
         defaultSchemaName: trader
         username: ${{ secrets.LIQUIBASE_USERNAME }}
         password: ${{ secrets.LIQUIBASE_PASSWORD }}
