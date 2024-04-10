@@ -1,3 +1,3 @@
 databaseChangeLog:
  - include:
-     file: changelog/include/changelog-1.0.yaml
+     file: glebza/tradeapp/db/changelog/include/changelog-1.0.yaml
