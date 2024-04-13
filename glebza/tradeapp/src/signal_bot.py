@@ -26,7 +26,7 @@ hist_tickers_signal_data = repo.get_signals_count_for_today()
 if len(hist_tickers_signal_data) > 0:
     for ticker in tickers_data:
         if ticker in hist_tickers_signal_data:
-            tickers_data[ticker]["signal_count"] = hist_tickers_signal_data[ticker]
+            tickers_data[ticker]["repeat_count"] = hist_tickers_signal_data[ticker]
 
 logger.info("ticker count {}".format(len(tickers_data)))
 

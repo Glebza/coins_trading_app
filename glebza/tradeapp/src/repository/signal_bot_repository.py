@@ -19,7 +19,6 @@ class SignalBotRepository:
         return connection
 
     def get_signals_count_for_today(self, ):
-        signals = None
         conn = None
         result = dict()
         try:
@@ -33,7 +32,7 @@ class SignalBotRepository:
                     signal_dict = dict(signal)
                     result[signal_dict["ticker"]] = signal_dict["repeat_count"]
         except (Exception, psycopg2.DatabaseError) as error:
-            logging.error(error,)
+            logging.exception(error,)
         finally:
             if conn is not None:
                 conn.close()
@@ -51,7 +50,7 @@ class SignalBotRepository:
                     ticker_dict = dict(ticker)
                     result[ticker_dict["ticker"]] = ticker_dict["id"]
         except (Exception, psycopg2.DatabaseError) as error:
-            logging.error(error)
+            logging.exception(error)
         finally:
             if cur is not None:
                 cur.close()
@@ -86,7 +85,7 @@ class SignalBotRepository:
             conn.commit()
 
         except (Exception, psycopg2.DatabaseError) as error:
-            logging.error(error)
+            logging.exception(error)
         finally:
             if conn is not None:
                 conn.close()
@@ -103,7 +102,7 @@ class SignalBotRepository:
             cur.execute('delete from signals where id in %s', (tuple(ids),))
             conn.commit()
         except (Exception, psycopg2.DatabaseError) as error:
-            logging.error(error)
+            logging.exception(error)
         finally:
             if conn is not None:
                 conn.close()
