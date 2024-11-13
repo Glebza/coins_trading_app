@@ -1,14 +1,15 @@
 from datetime import datetime, timedelta
 import json, os
 import websocket
-from binance import Client
-from binance.enums import *
+from  exchanges.exchange import Exchange
+
 import service.order_service as service
 import strategies.boll_macd_rsi as strategy
 import service.market_service as market_service
 import logging
 import time
 import sys
+from collections import deque
 from decimal import *
 
 CLOSE_INTERVAL = 'T'
@@ -16,16 +17,16 @@ CLOSE_INTERVAL = 'T'
 IS_CANDLE_CLOSE = 'x'
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s %(message)s', level=logging.DEBUG)
-
+EXCHANGE_NAME = 0
 API_KEY = os.environ['API_KEY']
 API_SECRET = os.environ['API_SECRET']
 SYMBOL = 'BTCUSDT'
 ACTION_BUY = 'BUY'
 ACTION_SELL = 'SELL'
 
-START_CASH = 700
+START_CASH = 500
 
-client = Client(API_KEY, API_SECRET)
+client = Exchange(API_KEY, API_SECRET,sys.argv[EXCHANGE_NAME]).get_client()
 
 sell_order = None
 buy_order = service.get_open_deal_order(SYMBOL)
@@ -39,7 +40,7 @@ else:
 warm_data = None
 
 if len(sys.argv) > 1:
-    warm_data = market_service.get_transformed_klines(client, SYMBOL, sys.argv[0], sys.argv[1])
+    warm_data = market_service.get_transformed_klines(client, SYMBOL, sys.argv[1], sys.argv[2])
 else:
     warm_data = market_service.get_transformed_klines(client, SYMBOL)
 

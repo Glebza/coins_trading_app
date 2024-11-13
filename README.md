@@ -62,3 +62,5 @@ Typical Price = Typical Price = (High + Low + Close) / 3
 
 работа нейронки 
 market_cap можно брать  через api client.get_ticker(symbol='BTCUSDT')
+
+

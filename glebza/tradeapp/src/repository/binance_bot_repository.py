@@ -30,7 +30,7 @@ class BinanceBotRepository:
         ticker_id = self.__get_ticker_id(conn, order['symbol'])[0]
         transact_time = datetime.fromtimestamp(order['time'] / 1000)
         cur.execute('''
-        insert into order (id
+        insert into "order" (id
         ,ticker_id
         ,orderlistid
         ,clientorderid
@@ -78,7 +78,7 @@ class BinanceBotRepository:
 
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
             cur.execute('''
-                           select * from order
+                           select * from "order"
                            where id =%s
                            ''', (id,))
             order = cur.fetchone()
@@ -97,7 +97,7 @@ class BinanceBotRepository:
         conn = self.__get_connection()
         cur = conn.cursor()
         cur.execute('''
-                   select * from order
+                   select * from "order"
                    where status =%s
                    ''', (status,))
         orders = cur.fetchall()

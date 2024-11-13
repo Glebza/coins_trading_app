@@ -1,0 +1,578 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: gleb.skalatsky
+      labels: initial-migration
+      context: backtest
+      changes:
+        - createSequence:
+            dataType: integer
+            schemaName: backtests
+            sequenceName: coins_id_seq
+        - createSequence:
+            dataType: integer
+            schemaName: backtests
+            sequenceName: kline_periods_id_seq
+        - createTable:
+            tableName: coins
+            schemaName: backtests
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticker
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 2
+      author: gleb.skalatsky
+      context: backtest
+      changes:
+        - createTable:
+            tableName: order
+            schemaName: backtests
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: false
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticker_id
+                  type: integer
+                  constraints:
+                    foreignKeyName: coins
+                    referencedColumnNames: id
+              - column:
+                  name: orderlistid
+                  type: integer
+              - column:
+                  name: clientorderid
+                  type: varchar
+              - column:
+                  name: transacttime
+                  type: timestamp
+              - column:
+                  name: price
+                  type: decimal
+              - column:
+                  name: origqty
+                  type: decimal
+              - column:
+                  name: executedqty
+                  type: decimal
+              - column:
+                  name: status
+                  type: varchar
+              - column:
+                  name: type
+                  type: varchar
+              - column:
+                  name: side
+                  type: varchar
+  - changeSet:
+      - id: 3
+        author: gleb.skalatsky
+        context: backtest
+      - createTable:
+          tableName: deals
+          remarks: pairs of buy and sell orders
+          schemaName: backtests
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: buy_order_id
+                type: integer
+                constraints:
+                  foreignKeyName: orders
+                  referencedColumnNames: id
+            - column:
+                name: sell_order_id
+                type: integer
+                constraints:
+                  foreignKeyName: orders
+                  referencedColumnNames: id
+            - column:
+                name: start_date
+                type: timestamp
+            - column:
+                name: end_date
+                type: timestamp
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+
+  - changeSet:
+      - id: 4
+        author: gleb.skalatsky
+        context: backtest
+        label: create history tables
+      - createTable:
+          tableName: kline_1m
+          schemaName: backtests
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+            - column:
+                name: open_price
+                type: decimal
+            - column:
+                name: high_price
+                type: decimal
+            - column:
+                name: low_price
+                type: decimal
+            - column:
+                name: close_price
+                type: decimal
+            - column:
+                name: volume
+                type: numeric
+            - column:
+                name: k_interval
+                type: timestamp
+      - createTable:
+          tableName: kline_15m
+          schemaName: backtests
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+            - column:
+                name: open_price
+                type: decimal
+            - column:
+                name: high_price
+                type: decimal
+            - column:
+                name: low_price
+                type: decimal
+            - column:
+                name: close_price
+                type: decimal
+            - column:
+                name: volume
+                type: numeric
+            - column:
+                name: k_interval
+                type: timestamp
+      - createTable:
+          tableName: kline_30m
+          schemaName: backtests
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+            - column:
+                name: open_price
+                type: decimal
+            - column:
+                name: high_price
+                type: decimal
+            - column:
+                name: low_price
+                type: decimal
+            - column:
+                name: close_price
+                type: decimal
+            - column:
+                name: volume
+                type: numeric
+            - column:
+                name: k_interval
+                type: timestamp
+      - createTable:
+          tableName: kline_4h
+          schemaName: backtests
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+            - column:
+                name: open_price
+                type: decimal
+            - column:
+                name: high_price
+                type: decimal
+            - column:
+                name: low_price
+                type: decimal
+            - column:
+                name: close_price
+                type: decimal
+            - column:
+                name: volume
+                type: numeric
+            - column:
+                name: k_interval
+                type: timestamp
+
+  - changeSet:
+      id: 5
+      author: gleb.skalatsky
+      context: backtest
+      changes:
+        - insert:
+            columns:
+              - column:
+                  name: ticker
+                  value: BTCUSDT
+            dbms: 'postgresql'
+            schemaName: backtests
+            tableName: coins
+
+  - changeSet:
+      - id: 6
+        author: gleb.skalatsky
+        context: backtest
+        label: create signals table
+      - createTable:
+          tableName: signals
+          schemaName: backtests
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: ticker_id
+                type: integer
+                constraints:
+                  foreignKeyName: coins
+                  referencedColumnNames: id
+            - column:
+                name: oi_percent_changed
+                type: real
+            - column:
+                name: cvd_percent_changed
+                type: real
+            - column:
+                name: price_change_24h
+                type: decimal
+            - column:
+                name: dt
+                type: timestamp
+  - changeSet:
+      id: 7
+      author: "gleb.skalatsky"
+      context: "backtest"
+      changes:
+        # Create backtest_launches table
+        - createTable:
+            tableName: "backtest_launches"
+            schemaName: "backtests"
+            columns:
+              - column:
+                  name: "id"
+                  type: "SERIAL"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: "launch_dtm"
+                  type: "TIMESTAMPTZ"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "backtest_start"
+                  type: "TIMESTAMPTZ"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "backtest_end"
+                  type: "TIMESTAMPTZ"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "backtest_interval"
+                  type: "VARCHAR(20)"
+                  remarks: "day/month/quarter"
+              - column:
+                  name: "kline_interval"
+                  type: "VARCHAR(10)"
+                  remarks: "1m / 1month"
+              - column:
+                  name: "strategy_details_id"
+                  type: "INT"
+              - column:
+                  name: "slippage"
+                  type: NUMERIC(10, 5)
+
+              - column:
+                  name: "commission"
+                  type: NUMERIC(10, 5)
+
+              - column:
+                  name: "risk_factor"
+                  type: NUMERIC(10, 5)
+
+              - column:
+                  name: "start_money"
+                  type: NUMERIC(20, 2)
+
+        # Create backtest_deals table with foreign key to backtest_launches and deals
+        - createTable:
+            tableName: "backtest_deals"
+            schemaName: "backtests"
+            columns:
+              - column:
+                  name: "id"
+                  type: "SERIAL"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: "launch_id"
+                  type: "INT"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "deal_id"
+                  type: "INT"
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: "backtest_deals"
+            baseColumnNames: "launch_id"
+            referencedTableName: "backtest_launches"
+            referencedColumnNames: "id"
+            constraintName: "fk_backtest_deals_launch"
+        - addForeignKeyConstraint:
+            baseTableName: "backtest_deals"
+            baseColumnNames: "deal_id"
+            referencedTableName: "deals"
+            referencedColumnNames: "id"
+            constraintName: "fk_backtest_deals_deals"
+
+        # Create strategy table
+        - createTable:
+            tableName: "strategy"
+            schemaName: "backtests"
+            columns:
+              - column:
+                  name: "id"
+                  type: "SERIAL"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: "title"
+                  type: "VARCHAR(100)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "description"
+                  type: "VARCHAR(300)"
+
+        # Create strategy_parameters table
+        - createTable:
+            tableName: "strategy_parameters"
+            schemaName: "backtests"
+            columns:
+              - column:
+                  name: "id"
+                  type: "SERIAL"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: "parameter_title"
+                  type: "VARCHAR(100)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "parameter_description"
+                  type: "VARCHAR(300)"
+
+        # Create backtest_strategy_details table with foreign keys to strategy and strategy_parameters
+        - createTable:
+            tableName: "backtest_strategy_details"
+            schemaName: "backtests"
+            columns:
+              - column:
+                  name: "id"
+                  type: "SERIAL"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: "strategy_id"
+                  type: "INT"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "parameter_id"
+                  type: "INT"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "parameter_value"
+                  type: NUMERIC(10, 5)
+        - addForeignKeyConstraint:
+            baseTableName: "backtest_strategy_details"
+            baseColumnNames: "strategy_id"
+            referencedTableName: "strategy"
+            referencedColumnNames: "id"
+            constraintName: "fk_backtest_strategy_details_strategy"
+        - addForeignKeyConstraint:
+            baseTableName: "backtest_strategy_details"
+            baseColumnNames: "parameter_id"
+            referencedTableName: "strategy_parameters"
+            referencedColumnNames: "id"
+            constraintName: "fk_backtest_strategy_details_parameters"
+        - addForeignKeyConstraint:
+            baseTableName: "backtest_launches"
+            baseColumnNames: "strategy_details_id"
+            referencedTableName: "backtest_strategy_details"
+            referencedColumnNames: "id"
+            constraintName: "fk_backtest_launches_strategy_details"
+  - changeSet:
+      id: 8
+      labels: "add-indexes"
+      author: gleb.skalatsky
+      context: backtest
+      changes:
+        - createIndex:
+            tableName: backtest_deals
+            indexName: idx_backtest_deals_launch_id
+            columns:
+              - column:
+                  name: launch_id
+
+        - createIndex:
+            tableName: backtest_strategy_details
+            indexName: idx_backtest_strategy_details_strategy_id
+            columns:
+              - column:
+                  name: strategy_id
+
+        - createIndex:
+            tableName: backtest_strategy_details
+            indexName: idx_backtest_strategy_details_parameter_id
+            columns:
+              - column:
+                  name: parameter_id
+
+        - createIndex:
+            tableName: backtest_launches
+            indexName: idx_backtest_launches_strategy_details_id
+            columns:
+              - column:
+                  name: strategy_details_id
+
+        - createIndex:
+            tableName: backtest_launches
+            indexName: idx_backtest_launches_launch_dtm
+            columns:
+              - column:
+                  name: launch_dtm
+  - changeSet:
+      id: 9
+      labels: create-backtest-result
+      author: gleb.skalatsky
+      context: backtest
+      changes:
+        - createTable:
+            tableName: backtest_result
+            schemaName: "backtests"
+            columns:
+              - column:
+                  name: id
+                  type: "SERIAL"
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: launch_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_backtest_result_launch
+                    references: backtest_launches(id)
+
+              - column:
+                  name: total_profit_loss
+                  type: NUMERIC(20, 2)
+                  defaultValue: 0.0
+
+              - column:
+                  name: win_rate
+                  type: NUMERIC(5, 2)
+                  defaultValue: 0.0
+
+              - column:
+                  name: max_drawdown
+                  type: NUMERIC(10, 5)
+                  defaultValue: 0.0
+
+              - column:
+                  name: sharpe_ratio
+                  type: NUMERIC(10, 5)
+                  defaultValue: 0.0
+
+              - column:
+                  name: other_metrics
+                  type: JSONB
+
+        - createIndex:
+            tableName: backtest_result
+            indexName: idx_backtest_result_launch_id
+            columns:
+              - column:
+                  name: launch_id

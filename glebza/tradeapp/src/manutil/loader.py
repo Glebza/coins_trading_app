@@ -40,5 +40,4 @@ def save_tickers_to_db(tickers):
             conn.close()
 
 
-
 load_tickers()

@@ -1,0 +1,4 @@
+databaseChangeLog:
+ - include:
+
+     file: changelog/include/backtest/changelog-1.0.yaml

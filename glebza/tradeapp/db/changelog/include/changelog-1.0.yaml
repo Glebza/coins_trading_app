@@ -338,6 +338,7 @@ databaseChangeLog:
   - changeSet:
       id: 8
       author: gleb.skalatsky
+      context: test
       changes:
         - renameColumn:
             oldColumnName: 24h_price_change

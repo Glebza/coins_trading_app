@@ -5,7 +5,7 @@ from binance.enums import *
 
 DEAL_DEADLINE_MILLISECONDS = 120000
 
-PROFIT_RATE = 15
+profit_rate = 15
 
 RSI_OVERSOLD = 50
 
@@ -13,6 +13,7 @@ RSI_PERIOD = 15
 
 
 def prepare(args):
+    profit_rate = args["profit_rate"]
     print('strategy doesn\'t need additional preparations')
 
 
@@ -23,6 +24,7 @@ def process(prices, current_interval, order):
     # Так мы можем попытаться предсказать пересечет ли MACD линию Sygnal.
     # Это позволит немного опередить ботов и возможно купить дешевле
     np_closes = numpy.append(numpy.array(close_prices), close_prices[-1])
+    print("array size = {}".format(len(np_closes)))
     rsi = talib.RSI(np_closes, RSI_PERIOD)
     macd, signal, macd_diff = talib.MACD(np_closes, fastperiod=12, slowperiod=26, signalperiod=9)
     upper, middle, lower = talib.BBANDS(numpy.array(close_prices), timeperiod=21, matype=MA_Type.T3)

@@ -4,6 +4,7 @@ import psycopg2.extras
 from datetime import datetime
 import os
 from decimal import *
+import pytz
 
 
 class HistoryRepository:
@@ -36,14 +37,14 @@ class HistoryRepository:
             close = 4
             volume = 5
             for kline in klines:
-
-                interval = datetime.fromtimestamp(kline[start_interval] / 1000)
+                timezone = pytz.timezone('UTC')
+                print(kline[start_interval])
+                interval = datetime.fromtimestamp(kline[start_interval], tz=timezone)
+                print(interval)
                 #print(interval.strftime('%Y-%d-%m %H:%M:%S'))
-                dbrows.append((interval, Decimal(kline[open_p]), Decimal(kline[high]),
+                cur.execute(sql_insert, (interval, Decimal(kline[open_p]), Decimal(kline[high]),
                                Decimal(kline[low]), Decimal(kline[close]), kline[volume]))
-
-                cur.executemany(sql_insert, dbrows)
-                conn.commit()
+            conn.commit()
         except (Exception, psycopg2.DatabaseError) as error:
             logging.error(error)
         finally:
