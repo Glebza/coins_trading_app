@@ -21,7 +21,7 @@ MINUTES_IN_THE_DAY = 125
 
 SYMBOL = 'BTCUSDT'
 
-FILENAME = '/Users/ruasyg4/PycharmProjects/CoinsTradeApp/glebza/tradeapp/tests/backtest/resources/backtest_data.csv'
+FILENAME = 'PycharmProjects/CoinsTradeApp/glebza/tradeapp/tests/backtest/resources/backtest_data.csv'
 
 k_interval_idx = 0
 open_idx = 1

@@ -15,7 +15,11 @@ class SignalBotRepository:
 
     def __get_connection(self):
         database_url = os.environ['DATABASE_URL']
+        default_schema = os.environ['DATABASE_DEFAULT_SCHEMA']
         connection = psycopg2.connect(database_url)
+        with connection.cursor() as cur:
+            cur.execute("SET search_path TO {}".format(default_schema))
+            connection.commit()
         return connection
 
     def get_signals_count_for_today(self, ):

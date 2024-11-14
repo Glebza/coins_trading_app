@@ -14,7 +14,11 @@ class HistoryRepository:
 
     def __get_connection(self):
         database_url = os.environ['DATABASE_URL']
+        default_schema = os.environ['DATABASE_DEFAULT_SCHEMA']
         connection = psycopg2.connect(database_url)
+        with connection.cursor() as cur:
+            cur.execute("SET search_path TO {}".format(default_schema))
+            connection.commit()
         return connection
 
     def save_klines_data(self, klines, interval) -> object:
@@ -39,7 +43,7 @@ class HistoryRepository:
             for kline in klines:
                 timezone = pytz.timezone('UTC')
                 print(kline[start_interval])
-                interval = datetime.fromtimestamp(kline[start_interval], tz=timezone)
+                interval = datetime.fromtimestamp(kline[start_interval]/1000, tz=timezone)
                 print(interval)
                 #print(interval.strftime('%Y-%d-%m %H:%M:%S'))
                 cur.execute(sql_insert, (interval, Decimal(kline[open_p]), Decimal(kline[high]),

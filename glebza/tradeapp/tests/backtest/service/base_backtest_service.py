@@ -3,8 +3,9 @@ from datetime import datetime, timedelta
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s %(message)s', level=logging.DEBUG)
 
-def warm_up(self, backtest_repository, kline_interval, backtest_start_date):
-    logging.info(self.symbol)
+
+def warm_up( symbol,backtest_repository, kline_interval, backtest_start_date):
+    logging.info(symbol)
     intervals = []
     volumes = []
     closes = []
@@ -18,7 +19,7 @@ def warm_up(self, backtest_repository, kline_interval, backtest_start_date):
         end_date = (start_date + timedelta(days=1)).strftime("%d.%m.%Y %H:%M:%S")
     # start_date = datetime(2024, 10, 10, 18, 34, 0)
     # end_date = datetime(2024, 10, 10, 19, 34, 59)
-    klines = backtest_repository.get_historical_klines(start_date, end_date, self.symbol, kline_interval)
+    klines = backtest_repository.get_historical_klines(start_date, end_date, symbol, kline_interval)
     start_interval = 0
     open_p = 1
     high = 2
@@ -54,7 +55,4 @@ def prepare_mock_order(order_id, time, qty, close_price, side):
              'time': time,
              'updateTime': 1674685872599, 'isWorking': True, 'workingTime': 1674685872599,
              'origQuoteOrderQty': '0.00000000', 'selfTradePreventionMode': 'NONE'})
-
-        self.order_id = self.order_id + 1
-
         return order

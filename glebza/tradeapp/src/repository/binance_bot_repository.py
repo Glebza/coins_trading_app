@@ -3,19 +3,25 @@ import psycopg2
 import psycopg2.extras
 from datetime import datetime
 import os
-import  logging
+import logging
+from psycopg2.extras import RealDictCursor
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s %(message)s', level=logging.DEBUG)
+
+
 class BinanceBotRepository:
 
     def __init__(self):
         print('init repository class')
 
-
     def __get_connection(self):
 
         database_url = os.environ['DATABASE_URL']
+        default_schema = os.environ['DATABASE_DEFAULT_SCHEMA']
         connection = psycopg2.connect(database_url)
+        with connection.cursor() as cur:
+            cur.execute("SET search_path TO {}".format(default_schema))
+            connection.commit()
         return connection
 
     def __get_ticker_id(self, connection, symbol):
@@ -128,20 +134,32 @@ class BinanceBotRepository:
 
     def save_deal(self, order):
         conn = self.__get_connection()
+        deal = None
         try:
-
-            cur = conn.cursor()
+            # Use RealDictCursor to get results as a dictionary
+            cur = conn.cursor(cursor_factory=RealDictCursor)
             symbol_id = self.__get_ticker_id(conn, order['symbol'])
             transact_time = datetime.fromtimestamp(order['time'] / 1000)
-            cur.execute('''insert into deals(buy_order_id,start_date,ticker_id) values (%s,%s,%s)'''
-                        , (order['orderId'], transact_time, symbol_id))
+
+            # Insert the deal and return all columns in dictionary format
+            cur.execute(
+                '''INSERT INTO deals(buy_order_id, start_date, ticker_id) 
+                   VALUES (%s, %s, %s) RETURNING *''',
+                (order['orderId'], transact_time, symbol_id)
+            )
+
+            # Fetch the newly inserted row as a dictionary
+            deal = cur.fetchone()
             conn.commit()
             cur.close()
+
         except (Exception, psycopg2.DatabaseError) as error:
             logging.error(error)
         finally:
             if conn is not None:
                 conn.close()
+
+        return deal
 
     def update_deal(self, buy_order, sell_order):
         conn = self.__get_connection()
@@ -234,11 +252,3 @@ class BinanceBotRepository:
                 conn.close()
 
         return rows_deleted
-
-
-
-
-
-
-
-

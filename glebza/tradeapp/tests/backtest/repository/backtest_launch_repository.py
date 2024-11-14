@@ -2,13 +2,14 @@ from glebza.tradeapp.tests.backtest.repository.backtest_base_repository import B
     BacktestStrategyDetail
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy import create_engine
+import os
 
 
 class BacktestLaunchRepository:
-    def __init__(self, database_url):
-        self.engine = create_engine(database_url)
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+    def __init__(self):
+        self.engine = create_engine(os.environ['DATABASE_URL'])
+        session = sessionmaker(bind=self.engine)
+        self.session = session()
 
     # Method to add a new backtest launch
     def add_backtest_launch(self, launch_dtm, backtest_start, backtest_end, backtest_interval, kline_interval,

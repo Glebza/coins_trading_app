@@ -5,7 +5,7 @@ import talib
 
 LOWEST_PRICE_DEVIATION_RANGE = 3
 
-PEAK_PRICE_TRESHOLD = 100
+PEAK_PRICE_THRESHOLD = 100
 
 close_prices_index = 0
 high_prices_index = 2
@@ -94,8 +94,8 @@ def do_sidewalk_finding(prices, intervals):
                 if peak_center_price <= hg_p:
                     is_a_peak = False
             if is_a_peak:
-                is_big_left_range = peak_center_price - high_prices[-15] > PEAK_PRICE_TRESHOLD
-                is_big_right_range = peak_center_price - low_price > PEAK_PRICE_TRESHOLD
+                is_big_left_range = peak_center_price - high_prices[-15] > PEAK_PRICE_THRESHOLD
+                is_big_right_range = peak_center_price - low_price > PEAK_PRICE_THRESHOLD
                 if is_big_left_range and is_big_right_range:
                     lowest_low_low_price = low_prices[-1]
                     lowest_low_low_interval = intervals[-1]
