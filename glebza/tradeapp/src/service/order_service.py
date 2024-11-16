@@ -28,11 +28,11 @@ def close_deal(client, symbol, closed_price, order):
 def __execute_order(client, closed_price, qty, repository, side, symbol):
     price = closed_price
     order_id = __place_order(client,
-                           symbol,
-                           side,
-                           ORDER_TYPE_LIMIT,
-                           price,
-                           qty)['orderId']
+                             symbol,
+                             side,
+                             ORDER_TYPE_LIMIT,
+                             price,
+                             qty)['orderId']
     order = client.get_order(symbol=symbol, orderId=order_id)
     if order['status'] == ORDER_STATUS_FILLED:
         repository.save_order(order=order)
@@ -79,4 +79,3 @@ def update_order_status(client, order, symbol):
 
 def get_open_deal_order(symbol):
     return repository.get_open_deal_order(symbol)
-

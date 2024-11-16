@@ -64,3 +64,5 @@ Typical Price = Typical Price = (High + Low + Close) / 3
 market_cap можно брать  через api client.get_ticker(symbol='BTCUSDT')
 
 
+Парамтеры запуска бэктестов 
+--kline_interval=1m  --backtest_start_date="01.03.2024 00:00:00" --backtest_end_date="01.31.2024 23:59:59" --backtest_interval=day  --start_cash=1000 --symbol=BTCUSDT

@@ -1,23 +1,14 @@
-import unittest
 from unittest.mock import MagicMock
 import argparse
-import numpy
-from talib import MA_Type
-
-import strategies.deviations as strategy
+import glebza.tradeapp.src.strategies.deviations as strategy
 import glebza.tradeapp.src.service.order_service as service
 import logging
-import csv
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from binance import Client
 import os
-from decimal import *
-
 from glebza.tradeapp.tests.backtest.repository.backtest_launch_repository import BacktestLaunchRepository
 from glebza.tradeapp.tests.backtest.repository.backtest_result_repository import BacktestResultRepository
-from service.base_backtest_service import warm_up, prepare_mock_order
-import talib
-
+from glebza.tradeapp.tests.backtest.service.base_backtest_service import prepare_mock_order
 from glebza.tradeapp.tests.backtest.repository.backtest_repository import BacktestRepository
 
 CLOSE_PRICE_POSITION = 4
@@ -68,12 +59,6 @@ class DeviationsStrategyBackTest():
         self.kline_interval = kline_interval
         self.backtest_start_date = backtest_start_date
         self.backtest_end_date = backtest_end_date
-        warm_data = warm_up(symbol=symbol,backtest_repository=self.repository, kline_interval=self.kline_interval, backtest_start_date=backtest_start_date)
-        self.close_prices = warm_data[0]
-        self.volumes = warm_data[1]
-        self.highs = warm_data[2]
-        self.lows = warm_data[3]
-        self.intervals = warm_data[4]
 
     def test_deviations_strategy(self):
         new_launch = self.backtest_launch_repo.add_backtest_launch(
@@ -88,54 +73,91 @@ class DeviationsStrategyBackTest():
             start_money=1000,
             risk_factor=0
         )
+
         print(f"Backtest Launch created with ID: {new_launch.id}")
-        #TODO make interval division based on the backtest_interval parameter
-        buy_order = None
-        start_date = datetime.strptime(self.backtest_start_date, "%d.%m.%Y %H:%M:%S")
-        end_date = datetime.strptime(self.backtest_end_date, "%d.%m.%Y %H:%M:%S")
+        backtest_start_dtm_gmt3 = datetime.strptime(self.backtest_start_date,
+                                                    "%m.%d.%Y %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=3)))
+
+        backtest_end_dtm_gmt3 = datetime.strptime(self.backtest_end_date,
+                                                  "%m.%d.%Y %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=3)))
+        backtest_start_dtm = backtest_start_dtm_gmt3.astimezone(timezone.utc)
+        backtest_end_dtm = backtest_end_dtm_gmt3.astimezone(timezone.utc)
         # start_date = datetime(2024, 10, 10, 19, 35, 0)
         # end_date = datetime(2024, 10, 11, 18, 35, 0)
-        klines = self.repository.get_historical_klines(start_date, end_date, symbol,
-                                                       self.kline_interval)
-        buy_price, sell_price = 0, 0
-        close_orders = []
-        for kline in klines:
-            closed_price = float(kline[CLOSE_PRICE_POSITION])
-            high_price = float(kline[HIGH_PRICE_POSITION])
-            low_price = float(kline[LOW_PRICE_POSITION])
-            interval = kline[INTERVAL_POSITION]
-            start_interval = datetime.timestamp(kline[0]) * 1000
+        start_date = backtest_start_dtm
+        if backtest_interval == "day":
+            print("Daily iterations")
+            print(f"Backtest start start dtm : {start_date} and Backtest end dtm {backtest_end_dtm}")
+            while start_date < backtest_end_dtm:
 
-            self.close_prices.append(closed_price)
-            self.highs.append(high_price)
-            self.lows.append(low_price)
-            self.intervals.append(interval)
-            # print("kline  {}".format(interval))
-            track = strategy.process([self.close_prices, self.highs, self.lows], self.intervals, buy_order)
-            if track['action'] == ACTION_BUY:
-                qty = round(self.start_cash / closed_price, 5)
-                buy_order = self.make_mock_order(closed_price, qty, start_interval, 'BUY')
-                service.open_deal(self.client, symbol, buy_price, qty)
-            if track['action'] == ACTION_SELL:
-                self.make_mock_order(closed_price, buy_order['executedQty'], start_interval, 'SELL')
-                close_orders.append(service.close_deal(self.client, symbol, closed_price, buy_order))
                 buy_order = None
+                end_date = start_date + timedelta(days=1)
+                self.close_prices = []
+                self.volumes = []
+                self.highs = []
+                self.lows = []
+                self.intervals = []
+                klines = self.repository.get_historical_klines(start_date, end_date, symbol, self.kline_interval)
+                buy_price, sell_price = 0, 0
+                close_orders = []
+                warm_up_iterations = 50
+                for kline in klines:
 
+                    closed_price = float(kline[CLOSE_PRICE_POSITION])
+                    high_price = float(kline[HIGH_PRICE_POSITION])
+                    low_price = float(kline[LOW_PRICE_POSITION])
+                    interval = kline[INTERVAL_POSITION]
+                    start_interval = datetime.timestamp(kline[INTERVAL_POSITION]) * 1000
+                    self.close_prices.append(closed_price)
+                    self.highs.append(high_price)
+                    self.lows.append(low_price)
+                    self.intervals.append(interval)
+                    if warm_up_iterations > 0:
+                        warm_up_iterations -= 1
+                        continue
+
+                    track = strategy.process([self.close_prices, self.highs, self.lows], self.intervals, buy_order)
+                    if track['action'] == ACTION_BUY:
+                        qty = round(self.start_cash / closed_price, 5)
+                        buy_order = self.make_mock_order(closed_price, qty, start_interval, 'BUY')
+                        service.open_deal(self.client, symbol, buy_price, qty)
+                    if track['action'] == ACTION_SELL:
+                        self.make_mock_order(closed_price, buy_order['executedQty'], start_interval, 'SELL')
+                        close_orders.append(service.close_deal(self.client, symbol, closed_price, buy_order))
+                        buy_order = None
+
+                if buy_order:
+                    self.make_mock_order(self.close_prices[-1], buy_order['executedQty'],
+                                         datetime.timestamp(self.intervals[-1]) * 1000, 'SELL')
+                    close_orders.append(
+                        service.close_deal(self.client, symbol, self.close_prices[-1], buy_order))
+                    buy_order = None
+
+                self.evaluate_profit(close_orders, end_date, new_launch, start_date)
+                self.backtest_launch_repo.close_session()
+                self.backtest_result_repo.close_session()
+                start_date = end_date
+                klines = []
+
+        if kline_interval == "month":
+            end_date = (start_date + timedelta(days=1)).strftime("%d.%m.%Y %H:%M:%S")
+
+    def evaluate_profit(self, close_orders, end_date, new_launch, start_date):
         if len(close_orders) > 0:
             if len(close_orders) > 1:
-                deals = self.repository.get_deals_between_close_orders_id(close_orders[0]['orderId'],close_orders[-1]['orderId'])
+                deals = self.repository.get_deals_between_close_orders_id(close_orders[0]['orderId'],
+                                                                          close_orders[-1]['orderId'])
                 for deal in deals:
                     self.backtest_launch_repo.add_backtest_deal(new_launch.id, deal["id"])
             else:
                 deal = self.repository.get_deal_by_sell_order_id(close_orders[0]['orderId'])
                 self.backtest_launch_repo.add_backtest_deal(new_launch.id, deal["id"])
 
-            profit = self.backtest_result_repo.evaluate_result(new_launch.id)
+            profit = self.backtest_result_repo.evaluate_result(new_launch.id, start_date, end_date)
             print(profit)
-            self.backtest_result_repo.add_backtest_result(launch_id=new_launch.id,total_profit_loss=profit[0])
-
-        self.backtest_launch_repo.close_session()
-        self.backtest_result_repo.close_session()
+            self.backtest_result_repo.add_backtest_result(launch_id=new_launch.id, total_profit_loss=profit[0])
+        else:
+            print(f"There is no deals in the interval from {start_date} till {end_date}")
 
     def make_mock_order(self, closed_price, qty, start_interval, side):
         order = prepare_mock_order(self.order_id, start_interval, qty, closed_price, side)
@@ -149,6 +171,7 @@ def start_backtest(argv):
     backtest = DeviationsStrategyBackTest()
     backtest.setUp()
     backtest.test_deviations_strategy()
+
 
 if __name__ == '__main__':
     start_backtest(argv=['first-arg-is-ignored'] + unknown)

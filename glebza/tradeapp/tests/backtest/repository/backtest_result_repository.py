@@ -1,7 +1,7 @@
 from glebza.tradeapp.tests.backtest.repository.backtest_base_repository import BacktestLaunch, BacktestDeal, \
     BacktestStrategyDetail, BacktestResult
 from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy import create_engine,text
+from sqlalchemy import create_engine, text
 import os
 
 
@@ -25,7 +25,7 @@ class BacktestResultRepository:
         self.session.commit()
         return new_result
 
-    def evaluate_result(self,launch_id):
+    def evaluate_result(self, launch_id, start_dtm, end_dtm):
         try:
             # Run the SQL query with the specified launch_id
             result = self.session.execute(
@@ -35,9 +35,10 @@ class BacktestResultRepository:
                             JOIN backtest_deals bd ON d.id = bd.deal_id
                             JOIN "order" b ON d.buy_order_id = b.id
                             JOIN "order" b2 ON d.sell_order_id = b2.id
-                            WHERE bd.launch_id = :launch_id;
+                            WHERE bd.launch_id = :launch_id 
+                            and b.transacttime between :start_dtm and :end_dtm;
                         """),
-                {"launch_id": launch_id}
+                {"launch_id": launch_id, "start_dtm": start_dtm, "end_dtm": end_dtm}
             ).fetchone()
 
             # Return the profit value if the query was successful
@@ -46,10 +47,9 @@ class BacktestResultRepository:
         except Exception as e:
             print(f"Error evaluating result: {e}")
             return None
+
     def get_backtest_results(self, launch_id):
         return self.session.query(BacktestResult).filter_by(launch_id=launch_id).all()
 
     def close_session(self):
         self.session.close()
-
-
