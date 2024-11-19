@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 import argparse
-import glebza.tradeapp.src.strategies.deviations as strategy
+from glebza.tradeapp.src.strategies.deviations import DeviationsStrategy
 import glebza.tradeapp.src.service.order_service as service
 import logging
 from datetime import datetime, timedelta, timezone
@@ -101,6 +101,7 @@ class DeviationsStrategyBackTest():
                 buy_price, sell_price = 0, 0
                 close_orders = []
                 warm_up_iterations = 50
+                strategy = DeviationsStrategy(None)
                 for kline in klines:
 
                     closed_price = float(kline[CLOSE_PRICE_POSITION])

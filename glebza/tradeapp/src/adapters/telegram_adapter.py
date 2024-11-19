@@ -1,13 +1,13 @@
 import telebot, os
 
 bot = telebot.TeleBot(os.environ['TELEGRAM_TOKEN'])
-groups_id = [-575029157]
+groups_id = [os.environ['TELEGRAM_GROUPS']]
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
     print(message)
     if message.text == "/start":
         #groups_id.append(message.chat.id)
-        bot.send_message(message.chat.id, 'хуярт')
+        bot.send_message(message.chat.id, 'wow')
     print(groups_id)
 
 
