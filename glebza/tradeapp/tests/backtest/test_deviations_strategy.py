@@ -101,7 +101,15 @@ class DeviationsStrategyBackTest():
                 buy_price, sell_price = 0, 0
                 close_orders = []
                 warm_up_iterations = 50
-                strategy = DeviationsStrategy(None)
+                config = {
+                    'peak_range_in_candles': 4,
+                    'look_back_period': 20,
+                    'retest_price_error_rate': 10,
+                    'lowest_price_error_range': 3,
+                    'point3_price_error_rate': 3,
+                    'min_range_from_base_to_peak':100,
+                }
+                strategy = DeviationsStrategy(config)
                 for kline in klines:
 
                     closed_price = float(kline[CLOSE_PRICE_POSITION])
