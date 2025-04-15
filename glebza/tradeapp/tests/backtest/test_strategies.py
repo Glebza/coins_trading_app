@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 import argparse
 from glebza.tradeapp.src.strategies.deviations import DeviationsStrategy
+import glebza.tradeapp.src.strategies.boll_macd_rsi as boll_macd_rsi
 import glebza.tradeapp.src.service.order_service as service
 import logging
 from datetime import datetime, timedelta, timezone
@@ -33,6 +34,7 @@ parser.add_argument('--backtest_end_date', type=str, help='dd.mm.yyyy hh24:Mi:ss
 parser.add_argument('--backtest_interval', type=str, help='month or day or year')
 parser.add_argument('--start_cash', type=int, help='start money for trading')
 parser.add_argument('--symbol', type=str, help='BTCUSDT or else')
+parser.add_argument('--strategy_name', type=str, help='trading strategy')
 
 args, unknown = parser.parse_known_args()
 kline_interval = args.kline_interval
@@ -41,9 +43,10 @@ backtest_end_date = args.backtest_end_date
 start_cash = args.start_cash
 symbol = args.symbol
 backtest_interval = args.backtest_interval
+strategy_name = args.strategy_name
 
 
-class DeviationsStrategyBackTest():
+class StrategyBackTest():
     def setUp(self):
         API_KEY = os.environ['API_KEY']
         API_SECRET = os.environ['API_SECRET']
@@ -60,7 +63,7 @@ class DeviationsStrategyBackTest():
         self.backtest_start_date = backtest_start_date
         self.backtest_end_date = backtest_end_date
 
-    def test_deviations_strategy(self):
+    def test_strategy(self):
         new_launch = self.backtest_launch_repo.add_backtest_launch(
             launch_dtm=datetime.now(),
             backtest_start=backtest_start_date,
@@ -101,15 +104,18 @@ class DeviationsStrategyBackTest():
                 buy_price, sell_price = 0, 0
                 close_orders = []
                 warm_up_iterations = 50
-                config = {
-                    'peak_range_in_candles': 4,
-                    'look_back_period': 20,
-                    'retest_price_error_rate': 10,
-                    'lowest_price_error_range': 3,
-                    'point3_price_error_rate': 3,
-                    'min_range_from_base_to_peak':100,
-                }
-                strategy = DeviationsStrategy(config)
+                if strategy_name == "deviations":
+                    config = {
+                        'peak_range_in_candles': 4,
+                        'look_back_period': 20,
+                        'retest_price_error_rate': 10,
+                        'lowest_price_error_range': 3,
+                        'point3_price_error_rate': 3,
+                        'min_range_from_base_to_peak': 100,
+                    }
+                    strategy = DeviationsStrategy(config)
+                else:
+                    strategy = boll_macd_rsi
                 for kline in klines:
 
                     closed_price = float(kline[CLOSE_PRICE_POSITION])
@@ -177,9 +183,9 @@ class DeviationsStrategyBackTest():
 
 
 def start_backtest(argv):
-    backtest = DeviationsStrategyBackTest()
+    backtest = StrategyBackTest()
     backtest.setUp()
-    backtest.test_deviations_strategy()
+    backtest.test_strategy()
 
 
 if __name__ == '__main__':

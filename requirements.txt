@@ -1,7 +1,6 @@
 python-binance
 numpy
-psycopg2-binary
-TA-Lib
+tulipy
 websockets
 websocket-client
 pandas
@@ -11,3 +10,4 @@ pymexc
 requests
 telebot
 sqlalchemy
+psycopg-binary

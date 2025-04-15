@@ -48,10 +48,11 @@ close_prices = warm_data[0]
 high_prices = warm_data[2]
 low_prices = warm_data[3]
 strategy.prepare(warm_data)
-open_deal =None
+open_deal = None
 
 # start is required to initialise its internal loop
 # TODO   реализовать teardown
+
 def handle_socket_message(ws, msg):
     global buy_order
     global sell_order
@@ -60,7 +61,7 @@ def handle_socket_message(ws, msg):
 
     st = time.time()
     candle = json.loads(msg)['k']
-    closed_price =float (candle['c'])
+    closed_price =float(candle['c'])
     high_price = float(candle['h'])
     low_price = float(candle['l'])
 
@@ -85,7 +86,7 @@ def handle_socket_message(ws, msg):
         close_prices.append(float(closed_price))
         high_prices.append(high_price)
         low_prices.append(low_price)
-        prices = closed_price,high_prices,low_prices
+        prices = closed_price, high_prices, low_prices
         logging.info("----")
         track = strategy.process(prices, candle[CLOSE_INTERVAL], buy_order)
 

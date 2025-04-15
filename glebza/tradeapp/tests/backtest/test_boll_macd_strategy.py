@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import numpy
 from talib import MA_Type
 
-import strategies.boll_macd_rsi as strategy
+import glebza.tradeapp.src.strategies.boll_macd_rsi as strategy
 import glebza.tradeapp.src.service.order_service as service
 import logging
 import csv
@@ -29,6 +29,7 @@ ACTION_SELL = 'SELL'
 RSI_PERIOD = 15
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s %(message)s', level=logging.DEBUG)
+
 
 class StrategyBackTest(unittest.TestCase):
 
@@ -69,7 +70,6 @@ class StrategyBackTest(unittest.TestCase):
                 buy_order = None
 
         self.assertEqual(True, False)
-
 
     def warm_up(self):
         logging.info(self.symbol)
