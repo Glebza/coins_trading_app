@@ -1,12 +1,13 @@
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy import create_engine
+import os
 
 from glebza.tradeapp.tests.backtest.repository.backtest_base_repository import Strategy, StrategyParameter
 
 
 class StrategyRepository:
-    def __init__(self, database_url):
-        self.engine = create_engine(database_url)
+    def __init__(self):
+        self.engine = create_engine(os.environ['DATABASE_URL'])
         session = sessionmaker(bind=self.engine)
         self.session = session()
 
@@ -27,6 +28,9 @@ class StrategyRepository:
     # Retrieve all strategies
     def get_strategies(self):
         return self.session.query(Strategy).all()
+
+    def get_strategy_by_title(self, title):
+        return self.session.query(Strategy).filter_by(title=title).one_or_none()
 
     # Retrieve all strategy parameters
     def get_strategy_parameters(self):

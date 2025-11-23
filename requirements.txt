@@ -11,3 +11,4 @@ requests
 telebot
 sqlalchemy
 psycopg-binary
+orjson

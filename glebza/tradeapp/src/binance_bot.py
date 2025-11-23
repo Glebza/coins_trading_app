@@ -1,16 +1,14 @@
-from datetime import datetime, timedelta
-import json, os
-import websocket
-from  exchanges.exchange import Exchange
-
-import service.order_service as service
-import strategies.boll_macd_rsi as strategy
-import service.market_service as market_service
+import json
 import logging
-import time
+import os
 import sys
-from collections import deque
-from decimal import *
+import time
+import websocket
+
+import service.market_service as market_service
+import service.order_service as service
+from strategies.boll_macd_rsi import BollMacdRsiStrategy
+from exchanges.exchange import Exchange
 
 CLOSE_INTERVAL = 'T'
 
@@ -24,9 +22,9 @@ SYMBOL = 'BTCUSDT'
 ACTION_BUY = 'BUY'
 ACTION_SELL = 'SELL'
 
-START_CASH = 500
+START_CASH = 1000
 
-client = Exchange(API_KEY, API_SECRET,sys.argv[EXCHANGE_NAME]).get_client()
+client = Exchange(API_KEY, API_SECRET, sys.argv[EXCHANGE_NAME]).get_client()
 
 sell_order = None
 buy_order = service.get_open_deal_order(SYMBOL)
@@ -47,11 +45,11 @@ else:
 close_prices = warm_data[0]
 high_prices = warm_data[2]
 low_prices = warm_data[3]
-strategy.prepare(warm_data)
 open_deal = None
 
 # start is required to initialise its internal loop
 # TODO   реализовать teardown
+
 
 def handle_socket_message(ws, msg):
     global buy_order
@@ -61,7 +59,7 @@ def handle_socket_message(ws, msg):
 
     st = time.time()
     candle = json.loads(msg)['k']
-    closed_price =float(candle['c'])
+    closed_price = float(candle['c'])
     high_price = float(candle['h'])
     low_price = float(candle['l'])
 
