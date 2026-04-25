@@ -1,6 +1,13 @@
-import requests,os
+import requests, os
 import logging
+import sys
+from pathlib import Path
 import psycopg2
+
+_src = Path(__file__).resolve().parents[1]
+if str(_src) not in sys.path:
+    sys.path.insert(0, str(_src))
+from instrument_type import CRYPTO
 
 
 api_base_url = "https://fapi.binance.com/{}"
@@ -21,8 +28,8 @@ def save_tickers_to_db(tickers):
         conn = psycopg2.connect(database_url)
         cur = conn.cursor()
         sql_insert = '''
-         insert into coins (ticker )
-         values (%s);
+         insert into instruments (ticker, instrument_type)
+         values (%s, %s);
          '''
         print(sql_insert)
         dbrows = []
@@ -30,7 +37,7 @@ def save_tickers_to_db(tickers):
         symbol_idx = 0
         for ticker in tickers:
             if ticker is not None:
-                dbrows.append((ticker,))
+                dbrows.append((ticker, CRYPTO))
         cur.executemany(sql_insert, dbrows)
         conn.commit()
     except (Exception, psycopg2.DatabaseError) as error:

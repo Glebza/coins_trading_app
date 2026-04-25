@@ -1,0 +1,3 @@
+databaseChangeLog:
+  - include:
+      file: changelog/include/bootstrap/changelog-bootstrap.yaml

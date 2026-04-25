@@ -1,68 +1,48 @@
-структура модуля стратегия
+Делаем фреймворк по Карверу и его книге [Systematic trading](https://www.systematictrading.org/)
 
-на вход подаются свечки с закрывающими ценами и наличие позиции
-
-на выходе дают команду WAIT,BUY,SELL и цену 
-
-
- variants:
- 
-in position:
- wait or sell 
-
-not in position:
- wait or buy
-
-формат candle 
-
-{
-  "e": "kline",         // Event type
-  "E": 1672515782136,   // Event time
-  "s": "BNBBTC",        // Symbol
-  "k": {
-    "t": 1672515780000, // Kline start time
-    "T": 1672515839999, // Kline close time
-    "s": "BNBBTC",      // Symbol
-    "i": "1m",          // Interval
-    "f": 100,           // First trade ID
-    "L": 200,           // Last trade ID
-    "o": "0.0010",      // Open price
-    "c": "0.0020",      // Close price
-    "h": "0.0025",      // High price
-    "l": "0.0015",      // Low price
-    "v": "1000",        // Base asset volume
-    "n": 100,           // Number of trades
-    "x": false,         // Is this kline closed?
-    "q": "1.0000",      // Quote asset volume
-    "V": "500",         // Taker buy base asset volume
-    "Q": "0.500",       // Taker buy quote asset volume
-    "B": "123456"       // Ignore
-  }
-}
-
-Обучение нейронки:
-
-Features:
-['k_interval', 'close_price', 'volume', 'market_cap', 'atr',
-             'rsi_15', 'rsi_9', 'macd', 'macd_sygnal', 'macd_diff', 'boll_low', 'boll_middle', 'boll_high']
-
-Как посчитать market_cap для исторических данных?
-
-возьмем период - месяц
-тогда для расчета market_cap берем исторические данные за месяц + 1 день
-далее market_cap = ∑ (Typical Price * Volume )
-weightedAvgPrice = ∑ (Typical Price * Volume ) / ∑ Volume
-Typical Price = Typical Price = (High + Low + Close) / 3
+Большие блоки :
+1) Инструменты - чем торгуем (фьючерсы, акции и тд)
+2) Trading rules and forcasts 
+3) Combined forcasts 
+4) volatility targeting 
+5) scaled positions 
+6) portfolios
+7) speed and size 
 
 
-Берем 1m исторические данные 
-на каждую минуту считаем market_cap за 24 часа
+Модуль инструментов 
+В проекте это framework/instruments
+Официальная документация MOEX ISS API: https://iss.moex.com/iss/reference/
+Торговать будем акциями, облигациями, фьючерсами, ETF и опционами
+Акции: 
+Данные не менее чем за 10 последних лет 
+Стоимость не имеет значения тк на РФ рынке нет очень дорогих акций
+Важно понимать откуда берется изменение стоимости компании. Видимо придется находить какие то фундаментальные критери и не торговать мутными компаниями.
+Брать только компании с достаточной волатильностью
+Нужно посчитать сколько различных эмитентов брать (по парочке из разных секторов?)
+Нужно брать максимально нескоррелированные акции
+Комиссии: для всех акций комиссии брокера равны 
+ликвидность - нужно установить какую то отсечку 
+Skew - как ее считать?
+нам нужно взять те у котрых достаточно высокая волатильность (высчитываем ее позже в разделе volatility targeting ) и достаточные объемы торгов 
+
+
+Trading rules and forcasts 
+В проекте это framework/forcasts 
+
+
+Volatility
+Я целюсь в Sharp ratio = 1.0 
+и percentage volatility target = 27% 
 
 
 
-работа нейронки 
-market_cap можно брать  через api client.get_ticker(symbol='BTCUSDT')
+собрать все акции:
+
+для каждой акции взять дневные свечи за последние 5 лет 
+посмотреть медианную дневную волатильность 
+отобрать те у котоорых больше 2% 
+посмотреть медианный объем торгов
+посмотреть разницу между медианой и 75 ым персентилем 
 
 
-Парамтеры запуска бэктестов 
---kline_interval=1m  --backtest_start_date="01.03.2024 00:00:00" --backtest_end_date="01.31.2024 23:59:59" --backtest_interval=day  --start_cash=1000 --symbol=BTCUSDT

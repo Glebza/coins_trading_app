@@ -26,7 +26,7 @@ class BinanceBotRepository:
 
     def __get_ticker_id(self, connection, symbol):
         cur = connection.cursor()
-        cur.execute('select id from coins where ticker = %s', (symbol,))
+        cur.execute('select id from instruments where ticker = %s', (symbol,))
         ticker_id = cur.fetchone()
         return ticker_id
 
@@ -186,9 +186,9 @@ class BinanceBotRepository:
         try:
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
             cur.execute('''
-                           select d.id,buy_order_id from deals d join coins c 
-                           on d.ticker_id = c.id
-                           where d.sell_order_id is null and c.ticker = %s
+                           select d.id,buy_order_id from deals d join instruments i
+                           on d.ticker_id = i.id
+                           where d.sell_order_id is null and i.ticker = %s
                            ''', (symbol,))
             deal = cur.fetchone()
             if deal is not None:

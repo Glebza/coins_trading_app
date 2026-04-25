@@ -28,8 +28,8 @@ class SignalBotRepository:
         try:
             conn = self.__get_connection()
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            cur.execute("""select ticker, count(*) as repeat_count from signals s join coins c on s.ticker_id = c.id
-                 where dt >= current_date group by c.ticker """)
+            cur.execute("""select ticker, count(*) as repeat_count from signals s join instruments i on s.ticker_id = i.id
+                 where dt >= current_date group by i.ticker """)
             signals = cur.fetchall()
             if signals is not None:
                 for signal in signals:
@@ -47,7 +47,7 @@ class SignalBotRepository:
         result = dict()
         try:
             cur = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            cur.execute('select ticker,id from coins')
+            cur.execute('select ticker,id from instruments')
             tickers = cur.fetchall()
             if tickers is not None:
                 for ticker in tickers:

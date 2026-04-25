@@ -4,10 +4,12 @@ import psycopg2.extras
 from datetime import datetime
 import os
 from decimal import *
+from typing import Optional
 import pytz
 
 
 class HistoryRepository:
+    _SUPPORTED_INTERVALS = {"1m", "15m", "30m", "4h", "1d"}
 
     def __init__(self):
         print('init history repository class')
@@ -51,6 +53,130 @@ class HistoryRepository:
             conn.commit()
         except (Exception, psycopg2.DatabaseError) as error:
             logging.error(error)
+        finally:
+            if conn is not None:
+                conn.close()
+
+    def save_tinvest_klines_data(self, instrument_id: int, klines: list[dict], interval: str) -> int:
+        conn = None
+        inserted = 0
+        if interval not in self._SUPPORTED_INTERVALS:
+            raise ValueError(f"Unsupported interval '{interval}'. Expected one of {sorted(self._SUPPORTED_INTERVALS)}")
+
+        try:
+            table_name = f"kline_{interval}"
+            sql_insert = f'''
+            INSERT INTO {table_name} (ticker_id, k_interval, open_price, high_price, low_price, close_price, volume)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (ticker_id, k_interval) DO NOTHING;
+            '''
+
+            conn = self.__get_connection()
+            cur = conn.cursor()
+            for kline in klines:
+                interval_dt = kline["k_interval"]
+                if interval_dt.tzinfo is None:
+                    interval_dt = interval_dt.replace(tzinfo=pytz.UTC)
+
+                cur.execute(
+                    sql_insert,
+                    (
+                        instrument_id,
+                        interval_dt,
+                        Decimal(kline["open_price"]),
+                        Decimal(kline["high_price"]),
+                        Decimal(kline["low_price"]),
+                        Decimal(kline["close_price"]),
+                        int(kline["volume"]),
+                    ),
+                )
+                inserted += cur.rowcount
+
+            conn.commit()
+            cur.close()
+            return inserted
+        except (Exception, psycopg2.DatabaseError) as error:
+            if conn is not None:
+                conn.rollback()
+            logging.error(error)
+            raise
+        finally:
+            if conn is not None:
+                conn.close()
+
+    def get_klines_by_instrument(self, instrument_id: int, interval: str,
+                                 start_dt: Optional[datetime] = None,
+                                 end_dt: Optional[datetime] = None,
+                                 limit: Optional[int] = None) -> list[dict]:
+        conn = None
+        if interval not in self._SUPPORTED_INTERVALS:
+            raise ValueError(f"Unsupported interval '{interval}'. Expected one of {sorted(self._SUPPORTED_INTERVALS)}")
+
+        try:
+            table_name = f"kline_{interval}"
+            sql = f"""
+            SELECT ticker_id, k_interval, open_price, high_price, low_price, close_price, volume
+            FROM {table_name}
+            WHERE ticker_id = %s
+            """
+            params = [instrument_id]
+            if start_dt is not None:
+                sql += " AND k_interval >= %s"
+                params.append(start_dt)
+            if end_dt is not None:
+                sql += " AND k_interval <= %s"
+                params.append(end_dt)
+            sql += " ORDER BY k_interval"
+            if limit is not None:
+                sql += " LIMIT %s"
+                params.append(limit)
+
+            conn = self.__get_connection()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cur.execute(sql, tuple(params))
+            rows = cur.fetchall()
+            cur.close()
+            return [dict(r) for r in rows]
+        finally:
+            if conn is not None:
+                conn.close()
+
+    def save_instrument_volatility(self, instrument_id: int, interval: str, as_of: datetime,
+                                   lookback_period: int, annualized_volatility: Decimal,
+                                   observations: int) -> int:
+        conn = None
+        try:
+            sql = """
+            INSERT INTO instrument_volatility (
+                instrument_id, interval_name, as_of, lookback_period, annualized_volatility, observations
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (instrument_id, interval_name, as_of) DO UPDATE
+            SET lookback_period = EXCLUDED.lookback_period,
+                annualized_volatility = EXCLUDED.annualized_volatility,
+                observations = EXCLUDED.observations;
+            """
+            conn = self.__get_connection()
+            cur = conn.cursor()
+            cur.execute(
+                sql,
+                (
+                    instrument_id,
+                    interval,
+                    as_of,
+                    lookback_period,
+                    annualized_volatility,
+                    observations,
+                ),
+            )
+            conn.commit()
+            cur.close()
+            return 1
+        except (Exception, psycopg2.DatabaseError) as error:
+            if conn is not None:
+                conn.rollback()
+            logging.error(error)
+            raise
         finally:
             if conn is not None:
                 conn.close()

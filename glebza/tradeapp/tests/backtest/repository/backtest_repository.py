@@ -19,7 +19,7 @@ class BacktestRepository:
     def get_historical_klines(self, time_from, time_to, symbol, kline_interval):
         conn = self.__get_connection()
         cur = conn.cursor()
-        cur.execute('''select id from coins where ticker = %s''', (symbol,))
+        cur.execute('''select id from instruments where ticker = %s''', (symbol,))
         ticker_id = cur.fetchone()
         table_name = 'kline_{}'.format(kline_interval)
         sql_select = '''select k_interval , open_price,high_price,low_price,close_price,volume
@@ -47,7 +47,7 @@ class BacktestRepository:
     def get_last_order_id(self, symbol):
         conn = self.__get_connection()
         cur = conn.cursor()
-        cur.execute('''select id from coins where ticker = %s''', (symbol,))
+        cur.execute('''select id from instruments where ticker = %s''', (symbol,))
         ticker_id = cur.fetchone()
         sql_select = '''select max(id) from "order" where ticker_id = %s'''
         cur.execute(sql_select, (ticker_id,))

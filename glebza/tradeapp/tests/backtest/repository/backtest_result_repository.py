@@ -31,12 +31,12 @@ class BacktestResultRepository:
             result = self.session.execute(
                 text("""
                             SELECT SUM(b.origqty * (b2.price - b.price)) AS profit
-                            FROM deals d
-                            JOIN backtest_deals bd ON d.id = bd.deal_id
-                            JOIN "order" b ON d.buy_order_id = b.id
-                            JOIN "order" b2 ON d.sell_order_id = b2.id
-                            WHERE bd.launch_id = :launch_id 
-                            and b.transacttime between :start_dtm and :end_dtm;
+                            FROM backtests.deals d
+                            JOIN backtests.backtest_deals bd ON d.id = bd.deal_id
+                            JOIN backtests."order" b ON d.buy_order_id = b.id
+                            JOIN backtests."order" b2 ON d.sell_order_id = b2.id
+                            WHERE bd.launch_id = :launch_id
+                            AND b.transacttime BETWEEN :start_dtm AND :end_dtm;
                         """),
                 {"launch_id": launch_id, "start_dtm": start_dtm, "end_dtm": end_dtm}
             ).fetchone()

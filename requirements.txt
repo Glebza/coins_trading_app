@@ -1,14 +1,32 @@
+# Install: python -m pip install -U pip
+#         python -m pip install -r requirements.txt
+# "resolution-too-deep" / long backtracking: use exact pins below, or: uv pip install -r requirements.txt
+#
+# HTTP stack: pin urllib3 + requests together (satisfy requests: urllib3 >=1.21.1, <3)
+urllib3
+requests
+
 python-binance
-numpy
-tulipy
+numpy>=1.24.0
+
 websockets
 websocket-client
-pandas
-urllib3==1.26.6
-scikit-learn
-pymexc
-requests
-telebot
-sqlalchemy
-psycopg-binary
-orjson
+pandas>=2.0.0
+scikit-learn>=1.3.0
+# Exact pins reduce pip backtracking (pymexc vs t-tech protobuf, etc.)
+pymexc==1.2.19
+# Telegram: PyPI `pyTelegramBotAPI` — import is still `telebot` (not the bogus `telebot` package)
+pyTelegramBotAPI>=4.14.0
+sqlalchemy>=2.0,<3
+psycopg-binary==3.3.3
+# Must match a wheel for your platform/Python (3.14 arm64: 3.11.8+); do not use loose >=3.10 or pip will try every 3.10.x sdist
+orjson==3.11.8
+# t-tech and pymexc both use protobuf; pin one line pip can satisfy
+protobuf
+# Optional: steadies sentry resolution for t-tech-investments
+sentry-sdk>=2.47,<3
+tulipy
+
+# T-Invest SDK (T-Bank)
+--extra-index-url https://opensource.tbank.ru/api/v4/projects/238/packages/pypi/simple
+t-tech-investments>=0.3.5

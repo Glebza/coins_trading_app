@@ -8,13 +8,13 @@ databaseChangeLog:
         - createSequence:
             dataType: integer
             schemaName: public
-            sequenceName: coins_id_seq
+            sequenceName: instruments_id_seq
         - createSequence:
             dataType: integer
             schemaName: public
             sequenceName: kline_periods_id_seq
         - createTable:
-            tableName: coins
+            tableName: instruments
             schemaName: public
             columns:
               - column:
@@ -28,8 +28,12 @@ databaseChangeLog:
                   type: varchar(50)
                   constraints:
                     nullable: false
-
-
+              - column:
+                  name: instrument_type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+                  remarks: "crypto, share, option, bond, future"
 
   - changeSet:
       id: 2
@@ -42,8 +46,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: Integer
-                  autoIncrement: true
+                  type: int
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -51,8 +54,8 @@ databaseChangeLog:
                   name: ticker_id
                   type: integer
                   constraints:
-                    foreignKeyName: coins
-                    referencedColumnNames: id
+                    foreignKeyName: fk_order_ticker_instruments
+                    references: instruments(id)
               - column:
                   name: orderlistid
                   type: integer
@@ -80,187 +83,200 @@ databaseChangeLog:
               - column:
                   name: side
                   type: varchar
-  - changeSet:
-      - id: 3
-        author: gleb.skalatsky
-        context: test
-      - createTable:
-          tableName: deals
-          remarks: pairs of buy and sell orders
-          schemaName: public
-          columns:
-            - column:
-                name: id
-                type: serial
-                constraints:
-                  primaryKey: true
-                  nullable: false
-            - column:
-                name: buy_order_id
-                type: integer
-                constraints:
-                  foreignKeyName: orders
-                  referencedColumnNames: id
-            - column:
-                name: sell_order_id
-                type: integer
-                constraints:
-                  foreignKeyName: orders
-                  referencedColumnNames: id
-            - column:
-                name: start_date
-                type: timestamp
-            - column:
-                name: end_date
-                type: timestamp
-            - column:
-                name: ticker_id
-                type: integer
-                constraints:
-                  foreignKeyName: coins
-                  referencedColumnNames: id
 
   - changeSet:
-      - id: 4
-        author: gleb.skalatsky
-        context: test
-        label: create history tables
-      - createTable:
-          tableName: kline_1m
-          schemaName: public
-          columns:
-            - column:
-                name: id
-                type: serial
-                constraints:
-                  primaryKey: true
-                  nullable: false
-            - column:
-                name: ticker_id
-                type: integer
-                constraints:
-                  foreignKeyName: coins
-                  referencedColumnNames: id
-            - column:
-                name: open_price
-                type: decimal
-            - column:
-                name: high_price
-                type: decimal
-            - column:
-                name: low_price
-                type: decimal
-            - column:
-                name: close_price
-                type: decimal
-            - column:
-                name: volume
-                type: numeric
-            - column:
-                name: k_interval
-                type: timestamp
-      - createTable:
-          tableName: kline_15m
-          schemaName: public
-          columns:
-            - column:
-                name: id
-                type: serial
-                constraints:
-                  primaryKey: true
-                  nullable: false
-            - column:
-                name: ticker_id
-                type: integer
-                constraints:
-                  foreignKeyName: coins
-                  referencedColumnNames: id
-            - column:
-                name: open_price
-                type: decimal
-            - column:
-                name: high_price
-                type: decimal
-            - column:
-                name: low_price
-                type: decimal
-            - column:
-                name: close_price
-                type: decimal
-            - column:
-                name: volume
-                type: numeric
-            - column:
-                name: k_interval
-                type: timestamp
-      - createTable:
-          tableName: kline_30m
-          schemaName: public
-          columns:
-            - column:
-                name: id
-                type: serial
-                constraints:
-                  primaryKey: true
-                  nullable: false
-            - column:
-                name: ticker_id
-                type: integer
-                constraints:
-                  foreignKeyName: coins
-                  referencedColumnNames: id
-            - column:
-                name: open_price
-                type: decimal
-            - column:
-                name: high_price
-                type: decimal
-            - column:
-                name: low_price
-                type: decimal
-            - column:
-                name: close_price
-                type: decimal
-            - column:
-                name: volume
-                type: numeric
-            - column:
-                name: k_interval
-                type: timestamp
-      - createTable:
-          tableName: kline_4h
-          schemaName: public
-          columns:
-            - column:
-                name: id
-                type: serial
-                constraints:
-                  primaryKey: true
-                  nullable: false
-            - column:
-                name: ticker_id
-                type: integer
-                constraints:
-                  foreignKeyName: coins
-                  referencedColumnNames: id
-            - column:
-                name: open_price
-                type: decimal
-            - column:
-                name: high_price
-                type: decimal
-            - column:
-                name: low_price
-                type: decimal
-            - column:
-                name: close_price
-                type: decimal
-            - column:
-                name: volume
-                type: numeric
-            - column:
-                name: k_interval
-                type: timestamp
+      id: 3
+      author: gleb.skalatsky
+      context: test
+      changes:
+        - createTable:
+            tableName: deals
+            remarks: pairs of buy and sell orders
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: buy_order_id
+                  type: integer
+              - column:
+                  name: sell_order_id
+                  type: integer
+              - column:
+                  name: start_date
+                  type: timestamp
+              - column:
+                  name: end_date
+                  type: timestamp
+              - column:
+                  name: ticker_id
+                  type: integer
+                  constraints:
+                    foreignKeyName: fk_deals_ticker_instruments
+                    references: instruments(id)
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: deals
+            baseColumnNames: buy_order_id
+            referencedTableSchemaName: public
+            referencedTableName: order
+            referencedColumnNames: id
+            constraintName: fk_deals_buy_order
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: deals
+            baseColumnNames: sell_order_id
+            referencedTableSchemaName: public
+            referencedTableName: order
+            referencedColumnNames: id
+            constraintName: fk_deals_sell_order
+
+  - changeSet:
+      id: 4
+      author: gleb.skalatsky
+      context: test
+      label: create history tables
+      changes:
+        - createTable:
+            tableName: kline_1m
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticker_id
+                  type: integer
+                  constraints:
+                    foreignKeyName: fk_kline_1m_ticker_instruments
+                    references: instruments(id)
+              - column:
+                  name: open_price
+                  type: decimal
+              - column:
+                  name: high_price
+                  type: decimal
+              - column:
+                  name: low_price
+                  type: decimal
+              - column:
+                  name: close_price
+                  type: decimal
+              - column:
+                  name: volume
+                  type: numeric
+              - column:
+                  name: k_interval
+                  type: timestamp
+        - createTable:
+            tableName: kline_15m
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticker_id
+                  type: integer
+                  constraints:
+                    foreignKeyName: fk_kline_15m_ticker_instruments
+                    references: instruments(id)
+              - column:
+                  name: open_price
+                  type: decimal
+              - column:
+                  name: high_price
+                  type: decimal
+              - column:
+                  name: low_price
+                  type: decimal
+              - column:
+                  name: close_price
+                  type: decimal
+              - column:
+                  name: volume
+                  type: numeric
+              - column:
+                  name: k_interval
+                  type: timestamp
+        - createTable:
+            tableName: kline_30m
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticker_id
+                  type: integer
+                  constraints:
+                    foreignKeyName: fk_kline_30m_ticker_instruments
+                    references: instruments(id)
+              - column:
+                  name: open_price
+                  type: decimal
+              - column:
+                  name: high_price
+                  type: decimal
+              - column:
+                  name: low_price
+                  type: decimal
+              - column:
+                  name: close_price
+                  type: decimal
+              - column:
+                  name: volume
+                  type: numeric
+              - column:
+                  name: k_interval
+                  type: timestamp
+        - createTable:
+            tableName: kline_4h
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticker_id
+                  type: integer
+                  constraints:
+                    foreignKeyName: fk_kline_4h_ticker_instruments
+                    references: instruments(id)
+              - column:
+                  name: open_price
+                  type: decimal
+              - column:
+                  name: high_price
+                  type: decimal
+              - column:
+                  name: low_price
+                  type: decimal
+              - column:
+                  name: close_price
+                  type: decimal
+              - column:
+                  name: volume
+                  type: numeric
+              - column:
+                  name: k_interval
+                  type: timestamp
 
   - changeSet:
       id: 5
@@ -271,76 +287,215 @@ databaseChangeLog:
               - column:
                   name: ticker
                   value: BTCUSDT
+              - column:
+                  name: instrument_type
+                  value: crypto
             dbms: 'postgresql'
             schemaName: public
-            tableName: coins
+            tableName: instruments
 
   - changeSet:
       id: 6
       author: gleb.skalatsky
+      context: test
+      label: create signals table
       changes:
-        - renameColumn:
-              oldColumnName: id
-              newColumnName: oldId
-              tableName: order
-        - addColumn:
-              columns:
-                - column:
-                      name: id
-                      type: int
-              tableName: order
-        - dropPrimaryKey:
-              tableName: order
-        - addNotNullConstraint:
-              columnDataType: int
-              columnName: id
-              tableName: order
-        - addPrimaryKey:
-                columnNames: id
-                constraintName: order_PK
-                tableName: order
-        - dropColumn:
-                columnName: oldId
-                tableName: order
+        - createTable:
+            tableName: signals
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticker_id
+                  type: integer
+                  constraints:
+                    foreignKeyName: fk_signals_ticker_instruments
+                    references: instruments(id)
+              - column:
+                  name: oi_percent_changed
+                  type: real
+              - column:
+                  name: cvd_percent_changed
+                  type: real
+              - column:
+                  name: price_change_24h
+                  type: decimal
+              - column:
+                  name: dt
+                  type: timestamp
+
   - changeSet:
-      - id: 7
-        author: gleb.skalatsky
-        context: test
-        label: create signals table
-      - createTable:
-          tableName: signals
-          schemaName: public
-          columns:
-            - column:
-                name: id
-                type: serial
-                constraints:
-                  primaryKey: true
-                  nullable: false
-            - column:
-                name: ticker_id
-                type: integer
-                constraints:
-                  foreignKeyName: coins
-                  referencedColumnNames: id
-            - column:
-                name: oi_percent_changed
-                type: real
-            - column:
-                name: cvd_percent_changed
-                type: real
-            - column:
-                name: 24h_price_change
-                type: decimal
-            - column:
-                name: dt
-                type: timestamp
+      id: 7
+      author: gleb.skalatsky
+      context: test
+      label: instrument-share-and-crypto-details
+      changes:
+        - createTable:
+            tableName: instrument_share
+            schemaName: public
+            remarks: T-Invest Share-aligned 1:1 extension for instruments.instrument_type = share
+            columns:
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: figi
+                  type: varchar(12)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: isin
+                  type: varchar(12)
+              - column:
+                  name: ticker
+                  type: varchar(50)
+              - column:
+                  name: class_code
+                  type: varchar(20)
+              - column:
+                  name: lot
+                  type: integer
+              - column:
+                  name: currency
+                  type: varchar(10)
+              - column:
+                  name: name
+                  type: varchar(512)
+              - column:
+                  name: buy_available_flag
+                  type: boolean
+              - column:
+                  name: sell_available_flag
+                  type: boolean
+              - column:
+                  name: api_trade_available_flag
+                  type: boolean
+              - column:
+                  name: for_qual_investor_flag
+                  type: boolean
+              - column:
+                  name: raw_payload
+                  type: jsonb
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: instrument_share
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: public
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_instrument_share_instruments
+            onDelete: CASCADE
+        - createIndex:
+            tableName: instrument_share
+            schemaName: public
+            indexName: uk_instrument_share_figi
+            unique: true
+            columns:
+              - column:
+                  name: figi
+        - createTable:
+            tableName: instrument_crypto
+            schemaName: public
+            remarks: Venue-specific crypto 1:1 extension for instruments.instrument_type = crypto
+            columns:
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: exchange_code
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: symbol_venue
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_asset
+                  type: varchar(32)
+              - column:
+                  name: quote_asset
+                  type: varchar(32)
+              - column:
+                  name: contract_kind
+                  type: varchar(20)
+                  remarks: perpetual, spot, delivery, etc.
+              - column:
+                  name: price_tick
+                  type: numeric
+              - column:
+                  name: qty_step
+                  type: numeric
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: instrument_crypto
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: public
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_instrument_crypto_instruments
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            constraintName: uk_instrument_crypto_exchange_symbol
+            schemaName: public
+            tableName: instrument_crypto
+            columnNames: exchange_code, symbol_venue
+
   - changeSet:
       id: 8
       author: gleb.skalatsky
       context: test
+      label: add-kline-unique-keys
       changes:
-        - renameColumn:
-            oldColumnName: 24h_price_change
-            newColumnName: price_change_24h
-            tableName: signals
+        - createIndex:
+            tableName: kline_1m
+            schemaName: public
+            indexName: uk_kline_1m_ticker_interval
+            unique: true
+            columns:
+              - column:
+                  name: ticker_id
+              - column:
+                  name: k_interval
+        - createIndex:
+            tableName: kline_15m
+            schemaName: public
+            indexName: uk_kline_15m_ticker_interval
+            unique: true
+            columns:
+              - column:
+                  name: ticker_id
+              - column:
+                  name: k_interval
+        - createIndex:
+            tableName: kline_30m
+            schemaName: public
+            indexName: uk_kline_30m_ticker_interval
+            unique: true
+            columns:
+              - column:
+                  name: ticker_id
+              - column:
+                  name: k_interval
+        - createIndex:
+            tableName: kline_4h
+            schemaName: public
+            indexName: uk_kline_4h_ticker_interval
+            unique: true
+            columns:
+              - column:
+                  name: ticker_id
+              - column:
+                  name: k_interval
