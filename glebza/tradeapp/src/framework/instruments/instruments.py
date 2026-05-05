@@ -35,6 +35,25 @@ def _normalize_dt(dt: Optional[datetime]) -> Optional[datetime]:
     return dt.astimezone(timezone.utc)
 
 
+def sector_from_share_row(share: dict) -> Optional[str]:
+    """Сектор из колонки ``instrument_share.sector`` (сохраняется из T-Invest при upsert)."""
+    v = share.get("sector")
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s or None
+
+
+def short_enabled_from_share_row(share: dict) -> Optional[bool]:
+    """Шорт из колонки ``instrument_share.short_enabled_flag`` (T-Invest ``Share.short_enabled_flag``)."""
+    if "short_enabled_flag" not in share:
+        return None
+    v = share["short_enabled_flag"]
+    if v is None:
+        return None
+    return bool(v)
+
+
 class TInvestInstrumentsService:
     def __init__(self, token: Optional[str] = None, *, target: Optional[str] = None) -> None:
         self._instrument_repo = TinvestRepository()
@@ -167,7 +186,7 @@ class TInvestInstrumentsService:
         share: dict,
         interval: str,
         *,
-        lookback_period: int = 20,
+        lookback_period: int = 252,
         start_dt: Optional[datetime] = None,
         end_dt: Optional[datetime] = None,
         limit: Optional[int] = None,
@@ -202,7 +221,7 @@ class TInvestInstrumentsService:
         ticker: str,
         interval: str,
         *,
-        lookback_period: int = 20,
+        lookback_period: int = 252,
         start_dt: Optional[datetime] = None,
         end_dt: Optional[datetime] = None,
         limit: Optional[int] = None,
@@ -261,14 +280,17 @@ class TInvestInstrumentsService:
             "observations": observations,
         }
 
-    def load_candles_and_store_volatility(
+    def load_historical_klines(
         self,
         interval: str,
         start_dt: datetime,
         end_dt: datetime,
+        *,
+        limit: Optional[int] = None,
     ) -> dict[str, dict]:
+        """Fetch candles from T-Invest and persist them for all listed shares (no volatility)."""
         result: dict[str, dict] = {}
-        for share in self.list_share_rows():
+        for share in self.list_share_rows(limit=limit):
             ticker = share["instruments_ticker"]
             try:
                 inserted = self.persist_candles(
@@ -277,39 +299,120 @@ class TInvestInstrumentsService:
                     from_dt=start_dt,
                     to_dt=end_dt,
                 )
-                #volatility = self._calculate_and_store_volatility_for_share(
-                #    share,
-                #    interval,
-                #    start_dt=start_dt,
-                #    end_dt=end_dt,
-                #)
+                result[ticker] = {"inserted_klines": inserted}
+            except Exception as exc:
+                logger.exception("failed to load klines ticker=%s interval=%s", ticker, interval)
+                result[ticker] = {"error": str(exc)}
+        return result
+
+    def compute_and_store_volatility_all_shares(
+        self,
+        interval: str,
+        start_dt: datetime,
+        end_dt: datetime,
+        *,
+        lookback_period: int = 252,
+        limit: Optional[int] = None,
+    ) -> dict[str, dict]:
+        """Read klines from PostgreSQL and write realized volatility for all shares (no API fetch)."""
+        result: dict[str, dict] = {}
+        for share in self.list_share_rows(limit=limit):
+            ticker = share["instruments_ticker"]
+            try:
+                vol_row = self._calculate_and_store_volatility_for_share(
+                    share,
+                    interval,
+                    lookback_period=lookback_period,
+                    start_dt=start_dt,
+                    end_dt=end_dt,
+                )
                 result[ticker] = {
-                    "inserted_klines": inserted,
-                    #"volatility": volatility["volatility"],
-                    #"as_of": volatility["as_of"],
-                    #"observations": volatility["observations"],
+                    "volatility": str(vol_row["volatility"]),
+                    "as_of": vol_row["as_of"],
+                    "observations": vol_row["observations"],
                 }
             except Exception as exc:
-                logger.exception("failed to process ticker=%s interval=%s", ticker, interval)
+                logger.exception("failed volatility ticker=%s interval=%s", ticker, interval)
                 result[ticker] = {"error": str(exc)}
         return result
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Load T-Invest share candles for all tickers and store realized volatility"
+        description="T-Invest shares: load klines into PostgreSQL and/or compute volatility from stored klines."
     )
-    parser.add_argument("--interval", required=True, choices=sorted(_INTERVALS))
-    parser.add_argument("--start-dt", required=True, help="ISO datetime, e.g. 2024-01-01T00:00:00+00:00")
-    parser.add_argument("--end-dt", required=True, help="ISO datetime, e.g. 2024-02-01T00:00:00+00:00")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_load = sub.add_parser(
+        "load-klines",
+        help="Fetch historical candles from T-Invest and upsert into the database.",
+    )
+    p_load.add_argument("--interval", required=True, choices=sorted(_INTERVALS))
+    p_load.add_argument(
+        "--start-dt",
+        required=True,
+        help="ISO datetime, e.g. 2024-01-01T00:00:00+00:00",
+    )
+    p_load.add_argument(
+        "--end-dt",
+        required=True,
+        help="ISO datetime, e.g. 2024-02-01T00:00:00+00:00",
+    )
+    p_load.add_argument(
+        "--limit-shares",
+        type=int,
+        default=None,
+        help="Optional max number of share rows to process (for tests/debug).",
+    )
+
+    p_vol = sub.add_parser(
+        "volatility",
+        help="Compute realized (annualized) volatility from klines already in PostgreSQL and upsert instrument_volatility.",
+    )
+    p_vol.add_argument("--interval", required=True, choices=sorted(_INTERVALS))
+    p_vol.add_argument(
+        "--start-dt",
+        required=True,
+        help="ISO datetime window start when reading klines from DB (inclusive-ish per repository query).",
+    )
+    p_vol.add_argument(
+        "--end-dt",
+        required=True,
+        help="ISO datetime window end when reading klines from DB.",
+    )
+    p_vol.add_argument(
+        "--lookback-period",
+        type=int,
+        default=252,
+        help="Number of return observations: e.g. 252 ≈ one trading year on daily bars.",
+    )
+    p_vol.add_argument(
+        "--limit-shares",
+        type=int,
+        default=None,
+        help="Optional max number of share rows to process (for tests/debug).",
+    )
+
     args = parser.parse_args()
     svc = TInvestInstrumentsService()
+    start = _parse_dt(args.start_dt)
+    end = _parse_dt(args.end_dt)
 
-    result = svc.load_candles_and_store_volatility(
-        args.interval,
-        start_dt=_parse_dt(args.start_dt),
-        end_dt=_parse_dt(args.end_dt),
-    )
+    if args.command == "load-klines":
+        result = svc.load_historical_klines(
+            args.interval,
+            start_dt=start,
+            end_dt=end,
+            limit=args.limit_shares,
+        )
+    else:
+        result = svc.compute_and_store_volatility_all_shares(
+            args.interval,
+            start_dt=start,
+            end_dt=end,
+            lookback_period=args.lookback_period,
+            limit=args.limit_shares,
+        )
     print(result, flush=True)
 
 

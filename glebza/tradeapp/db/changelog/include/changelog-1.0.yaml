@@ -499,3 +499,90 @@ databaseChangeLog:
                   name: ticker_id
               - column:
                   name: k_interval
+
+  - changeSet:
+      id: 9
+      author: gleb.skalatsky
+      context: test
+      label: add-instrument-volatility
+      changes:
+        - createTable:
+            tableName: instrument_volatility
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: interval_name
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: as_of
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: lookback_period
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: annualized_volatility
+                  type: numeric(20, 10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: observations
+                  type: integer
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: instrument_volatility
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: public
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_instrument_volatility_instruments
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            constraintName: uk_instrument_volatility_key
+            schemaName: public
+            tableName: instrument_volatility
+            columnNames: instrument_id, interval_name, as_of
+
+  - changeSet:
+      id: 10
+      author: gleb.skalatsky
+      context: test
+      label: instrument-share-sector-short-enabled
+      changes:
+        - addColumn:
+            schemaName: public
+            tableName: instrument_share
+            columns:
+              - column:
+                  name: sector
+                  type: varchar(256)
+                  remarks: T-Invest Share.sector (economic sector)
+        - addColumn:
+            schemaName: public
+            tableName: instrument_share
+            columns:
+              - column:
+                  name: short_enabled_flag
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+                  remarks: T-Invest Share.short_enabled_flag (шорт доступен)

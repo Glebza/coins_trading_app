@@ -15,6 +15,8 @@ from psycopg2.extras import Json
 from instrument_type import SHARE
 from t_tech.invest.schemas import Share
 
+from framework.instruments.instrument import share_sector
+
 logger = logging.getLogger(__name__)
 
 
@@ -103,6 +105,8 @@ class TinvestRepository:
         lot = share.lot
         currency = _truncate(share.currency, 10)
         name = _truncate(share.name, 512)
+        sector = share_sector(share)
+        short_enabled = bool(getattr(share, "short_enabled_flag", False))
 
         if row:
             instrument_id = row[0]
@@ -123,8 +127,10 @@ class TinvestRepository:
                     lot = %s,
                     currency = %s,
                     name = %s,
+                    sector = %s,
                     buy_available_flag = %s,
                     sell_available_flag = %s,
+                    short_enabled_flag = %s,
                     api_trade_available_flag = %s,
                     for_qual_investor_flag = %s,
                     raw_payload = %s
@@ -138,8 +144,10 @@ class TinvestRepository:
                     lot,
                     currency,
                     name,
+                    sector,
                     share.buy_available_flag,
                     share.sell_available_flag,
+                    short_enabled,
                     share.api_trade_available_flag,
                     share.for_qual_investor_flag,
                     raw,
@@ -162,11 +170,13 @@ class TinvestRepository:
             """
             INSERT INTO instrument_share (
                 instrument_id, figi, isin, ticker, class_code, lot, currency, name,
-                buy_available_flag, sell_available_flag, api_trade_available_flag,
+                sector,
+                buy_available_flag, sell_available_flag, short_enabled_flag, api_trade_available_flag,
                 for_qual_investor_flag, raw_payload
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s
+                %s,
+                %s, %s, %s, %s, %s, %s
             )
             """,
             (
@@ -178,8 +188,10 @@ class TinvestRepository:
                 lot,
                 currency,
                 name,
+                sector,
                 share.buy_available_flag,
                 share.sell_available_flag,
+                short_enabled,
                 share.api_trade_available_flag,
                 share.for_qual_investor_flag,
                 raw,
@@ -197,7 +209,9 @@ class TinvestRepository:
                 """
                 SELECT i.id AS instrument_id, i.ticker AS instruments_ticker, i.instrument_type,
                        s.figi, s.isin, s.ticker AS listing_ticker, s.class_code, s.lot,
-                       s.currency, s.name, s.buy_available_flag, s.sell_available_flag,
+                       s.currency, s.name, s.sector,
+                       s.buy_available_flag, s.sell_available_flag,
+                       s.short_enabled_flag,
                        s.api_trade_available_flag, s.for_qual_investor_flag, s.raw_payload
                 FROM instruments i
                 JOIN instrument_share s ON s.instrument_id = i.id
@@ -227,7 +241,9 @@ class TinvestRepository:
                 """
                 SELECT i.id AS instrument_id, i.ticker AS instruments_ticker, i.instrument_type,
                        s.figi, s.isin, s.ticker AS listing_ticker, s.class_code, s.lot,
-                       s.currency, s.name, s.buy_available_flag, s.sell_available_flag,
+                       s.currency, s.name, s.sector,
+                       s.buy_available_flag, s.sell_available_flag,
+                       s.short_enabled_flag,
                        s.api_trade_available_flag, s.for_qual_investor_flag, s.raw_payload
                 FROM instruments i
                 JOIN instrument_share s ON s.instrument_id = i.id
@@ -251,7 +267,9 @@ class TinvestRepository:
                 """
                 SELECT i.id AS instrument_id, i.ticker AS instruments_ticker, i.instrument_type,
                        s.figi, s.isin, s.ticker AS listing_ticker, s.class_code, s.lot,
-                       s.currency, s.name, s.buy_available_flag, s.sell_available_flag,
+                       s.currency, s.name, s.sector,
+                       s.buy_available_flag, s.sell_available_flag,
+                       s.short_enabled_flag,
                        s.api_trade_available_flag, s.for_qual_investor_flag, s.raw_payload
                 FROM instruments i
                 JOIN instrument_share s ON s.instrument_id = i.id
@@ -274,7 +292,9 @@ class TinvestRepository:
             sql = """
                 SELECT i.id AS instrument_id, i.ticker AS instruments_ticker, i.instrument_type,
                        s.figi, s.isin, s.ticker AS listing_ticker, s.class_code, s.lot,
-                       s.currency, s.name, s.buy_available_flag, s.sell_available_flag,
+                       s.currency, s.name, s.sector,
+                       s.buy_available_flag, s.sell_available_flag,
+                       s.short_enabled_flag,
                        s.api_trade_available_flag, s.for_qual_investor_flag, s.raw_payload
                 FROM instruments i
                 JOIN instrument_share s ON s.instrument_id = i.id

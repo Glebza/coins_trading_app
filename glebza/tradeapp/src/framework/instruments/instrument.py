@@ -11,6 +11,7 @@ from typing import Iterable, Optional
 
 from repository.history_repository import HistoryRepository
 from t_tech.invest import CandleInterval, Client
+from t_tech.invest.schemas import Share
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +23,17 @@ _INTERVALS: dict[str, tuple[CandleInterval, timedelta]] = {
     "4h": (CandleInterval.CANDLE_INTERVAL_4_HOUR, timedelta(days=365)),
     "1d": (CandleInterval.CANDLE_INTERVAL_DAY, timedelta(days=365 * 5)),
 }
+
+
+def share_sector(share: Share, *, max_len: int = 256) -> Optional[str]:
+    """T-Invest Share.sector (сектор экономики), normalized for DB storage."""
+    v = getattr(share, "sector", None)
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    return s if len(s) <= max_len else s[:max_len]
 
 
 def _money_to_decimal(value) -> Decimal:

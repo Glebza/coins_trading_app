@@ -4,4 +4,8 @@ glebza/tradeapp/db/liquibase.bootstrap.properties
 glebza/tradeapp/db/liquibase.backtest.properties
 glebza/tradeapp/db/.lb-bootstrap-run.properties
 glebza/tradeapp/db/.lb-app-run.properties
-shares.png
+
+glebza/tradeapp/description.docx
+glebza/tradeapp/db/liquibase.bootstrap.properties.example
+__pycache__/
+*.py[cod]
