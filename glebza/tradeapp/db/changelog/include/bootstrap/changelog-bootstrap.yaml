@@ -28,14 +28,18 @@ databaseChangeLog:
       author: gleb.skalatsky
       runInTransaction: false
       dbms: postgresql
+      validCheckSum: ANY
+      comment: |
+        Postgres folds unquoted identifiers to lower case, so the database is stored as 'traderdb'.
+        Both the precondition and the CREATE statement must use the lowercase name to keep idempotency.
       preConditions:
         - onFail: MARK_RAN
         - sqlCheck:
             expectedResult: 0
-            sql: SELECT COUNT(*) FROM pg_catalog.pg_database WHERE datname = 'traderDB'
+            sql: SELECT COUNT(*) FROM pg_catalog.pg_database WHERE datname = 'traderdb'
       changes:
         - sql:
-            sql: CREATE DATABASE traderDB OWNER trader
+            sql: CREATE DATABASE traderdb OWNER trader
             splitStatements: false
 
   - changeSet:

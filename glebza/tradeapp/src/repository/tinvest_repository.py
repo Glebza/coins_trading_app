@@ -20,11 +20,6 @@ from framework.instruments.instrument import share_sector
 logger = logging.getLogger(__name__)
 
 
-def _truncate(s: Optional[str], max_len: int) -> Optional[str]:
-    if s is None:
-        return None
-    s = str(s)
-    return s if len(s) <= max_len else s[:max_len]
 
 
 def _share_raw_json(share: Share) -> Any:
@@ -87,8 +82,8 @@ class TinvestRepository:
 
     def _upsert_share_cur(self, conn, share: Share, instruments_ticker: str) -> int:
         cur = conn.cursor()
-        figi = _truncate(share.figi, 12)
-        isin = _truncate((share.isin or "").strip(), 12) or None
+        figi = share.figi
+        isin = share.isin.strip()
         if not isin:
             raise ValueError("Share.isin is required for upsert (identity key)")
 
@@ -99,12 +94,12 @@ class TinvestRepository:
         row = cur.fetchone()
         raw = _share_raw_json(share)
 
-        t_ticker = _truncate(instruments_ticker, 50)
-        t_share = _truncate(share.ticker, 50)
-        class_code = _truncate(share.class_code, 20)
+        t_ticker = instruments_ticker
+        t_share = share.ticker
+        class_code = share.class_code
         lot = share.lot
-        currency = _truncate(share.currency, 10)
-        name = _truncate(share.name, 512)
+        currency = share.currency
+        name = share.name
         sector = share_sector(share)
         short_enabled = bool(getattr(share, "short_enabled_flag", False))
 
@@ -230,7 +225,7 @@ class TinvestRepository:
         """
         Resolve by ``instruments.ticker`` (listing ticker, same as ``instruments_ticker`` in list/get rows).
         """
-        key = _truncate((ticker or "").strip(), 50)
+        key = ticker.strip()
         if not key:
             return None
         conn = None

@@ -18,7 +18,8 @@ pymexc==1.2.19
 # Telegram: PyPI `pyTelegramBotAPI` — import is still `telebot` (not the bogus `telebot` package)
 pyTelegramBotAPI>=4.14.0
 sqlalchemy>=2.0,<3
-psycopg-binary==3.3.3
+# Code in glebza/tradeapp/src/repository/* uses the legacy psycopg2 API.
+psycopg2-binary>=2.9
 # Must match a wheel for your platform/Python (3.14 arm64: 3.11.8+); do not use loose >=3.10 or pip will try every 3.10.x sdist
 orjson==3.11.8
 # t-tech and pymexc both use protobuf; pin one line pip can satisfy

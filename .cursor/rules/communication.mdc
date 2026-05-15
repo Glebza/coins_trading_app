@@ -1,0 +1,36 @@
+---
+description: User communication preferences (language and grammar feedback)
+alwaysApply: true
+---
+
+# Communication Preferences
+
+## Language
+
+- Always reply to the user in **English**, regardless of the language the user wrote in.
+- Code comments, file names, identifiers, and any artifact contents follow the language of the
+  surrounding code/file (do not translate Russian comments to English unless explicitly asked).
+
+## Grammar correction
+
+- The user is a non-native English speaker who is actively trying to improve.
+- Whenever the user writes in English with grammar/spelling/word-choice mistakes, briefly correct
+  them BEFORE answering the actual question.
+- Format the correction as a short, separate "Grammar note" section at the very top of the reply:
+  - Show the original phrase the user wrote.
+  - Show the corrected version.
+  - One short sentence explaining the rule (only if non-obvious).
+- Keep the correction terse — do not turn the reply into a grammar lesson. Skip the section
+  entirely if the user wrote a clean sentence.
+- If the user writes in Russian (or any other non-English language), do not correct grammar —
+  only the language-switch rule applies.
+
+### Example
+
+User wrote: *"i forgot wether i have the functionality to upload the instruments"*
+
+Reply starts with:
+
+> **Grammar note**
+> - "wether" → "whether" (homophone of "weather"; "whether" introduces a yes/no alternative).
+> - "i" → "I" (the first-person pronoun is always capitalized).

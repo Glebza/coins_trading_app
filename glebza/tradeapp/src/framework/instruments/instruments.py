@@ -58,7 +58,14 @@ class TInvestInstrumentsService:
     def __init__(self, token: Optional[str] = None, *, target: Optional[str] = None) -> None:
         self._instrument_repo = TinvestRepository()
         self._history_repo = HistoryRepository()
-        self._kline_service = TInvestKlineService(token=token, target=target)
+        self._token = token
+        self._target = target
+        self._kline_service: Optional[TInvestKlineService] = None
+
+    def _get_kline_service(self) -> TInvestKlineService:
+        if self._kline_service is None:
+            self._kline_service = TInvestKlineService(token=self._token, target=self._target)
+        return self._kline_service
 
     def list_share_tickers(self, limit: Optional[int] = None) -> list[str]:
         return [share["instruments_ticker"] for share in self.list_share_rows(limit=limit) if share["instruments_ticker"]]
@@ -89,7 +96,7 @@ class TInvestInstrumentsService:
         from_dt: Optional[datetime] = None,
         to_dt: Optional[datetime] = None,
     ) -> int:
-        return self._kline_service.persist_candles(
+        return self._get_kline_service().persist_candles(
             share["instrument_id"],
             share["instruments_ticker"],
             share["class_code"],

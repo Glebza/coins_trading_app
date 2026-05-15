@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1200" viewBox="0 0 1500 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Carver systematic trading process</title>
+  <desc id="desc">A flow diagram of the trading process inspired by Robert Carver's Systematic Trading framework.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f7f8fb; }
+      .title { font: 700 34px Arial, sans-serif; fill: #172033; }
+      .subtitle { font: 400 17px Arial, sans-serif; fill: #596276; }
+      .section { font: 700 18px Arial, sans-serif; fill: #3b4252; letter-spacing: .5px; }
+      .box { fill: #ffffff; stroke: #b9c2d0; stroke-width: 2; rx: 18; }
+      .box-main { fill: #eef5ff; stroke: #6f9ed8; }
+      .box-risk { fill: #fff5e8; stroke: #d89a4a; }
+      .box-portfolio { fill: #edf8ef; stroke: #64a96c; }
+      .box-exec { fill: #f5efff; stroke: #9271d8; }
+      .label { font: 700 20px Arial, sans-serif; fill: #172033; }
+      .small { font: 400 15px Arial, sans-serif; fill: #4f5b6f; }
+      .formula { font: 700 15px Arial, sans-serif; fill: #2f3b52; }
+      .note { font: 400 14px Arial, sans-serif; fill: #5e687c; }
+      .arrow { fill: none; stroke: #56627a; stroke-width: 3; marker-end: url(#arrowhead); }
+      .soft-arrow { fill: none; stroke: #8b95a8; stroke-width: 2.4; stroke-dasharray: 8 7; marker-end: url(#arrowhead-soft); }
+      .badge { fill: #172033; }
+      .badge-text { font: 700 14px Arial, sans-serif; fill: #fff; }
+      .lane { fill: none; stroke: #d9dee8; stroke-width: 2; stroke-dasharray: 6 8; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M0,0 L12,4 L0,8 Z" fill="#56627a"/>
+    </marker>
+    <marker id="arrowhead-soft" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M0,0 L12,4 L0,8 Z" fill="#8b95a8"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1500" height="1200"/>
+
+  <text class="title" x="70" y="62">Carver-style systematic trading process</text>
+  <text class="subtitle" x="70" y="92">From instrument selection to rules, forecasts, risk targeting, portfolio sizing, execution, and daily housekeeping.</text>
+
+  <rect class="lane" x="42" y="125" width="1416" height="235" rx="24"/>
+  <rect class="lane" x="42" y="390" width="1416" height="255" rx="24"/>
+  <rect class="lane" x="42" y="675" width="1416" height="220" rx="24"/>
+  <rect class="lane" x="42" y="925" width="1416" height="205" rx="24"/>
+  <text class="section" x="70" y="155">1. RESEARCH AND INPUTS</text>
+  <text class="section" x="70" y="420">2. FORECASTS AND RISK CONTROLS</text>
+  <text class="section" x="70" y="705">3. POSITION AND PORTFOLIO SIZING</text>
+  <text class="section" x="70" y="955">4. TRADING PROCESS</text>
+
+  <!-- Row 1 -->
+  <g transform="translate(70 190)">
+    <rect class="box box-main" width="250" height="125" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="22" y="32">1</text>
+    <text class="label" x="55" y="34">Instrument universe</text>
+    <text class="small" x="24" y="65">T-Invest / MOEX data</text>
+    <text class="small" x="24" y="88">shares, futures, bonds, ETFs</text>
+    <text class="small" x="24" y="111">reference data + candles</text>
+  </g>
+
+  <g transform="translate(385 190)">
+    <rect class="box box-main" width="260" height="125" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="22" y="32">2</text>
+    <text class="label" x="55" y="34">Instrument selection</text>
+    <text class="small" x="24" y="65">liquidity, volatility, costs</text>
+    <text class="small" x="24" y="88">tradability flags, qualifiers</text>
+    <text class="small" x="24" y="111">avoid very low volatility assets</text>
+  </g>
+
+  <g transform="translate(710 190)">
+    <rect class="box box-main" width="285" height="125" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="22" y="32">3</text>
+    <text class="label" x="55" y="34">Rule hypothesis</text>
+    <text class="small" x="24" y="65">cause, effect, horizon</text>
+    <text class="small" x="24" y="88">conditions, falsifiability</text>
+    <text class="small" x="24" y="111">why not arbitraged away?</text>
+  </g>
+
+  <g transform="translate(1060 190)">
+    <rect class="box box-main" width="335" height="125" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="22" y="32">4</text>
+    <text class="label" x="55" y="34">Trading rule / variation</text>
+    <text class="small" x="24" y="65">pure function: prices -> forecast</text>
+    <text class="small" x="24" y="88">examples: EWMAC, breakout, carry</text>
+    <text class="small" x="24" y="111">variations: different lookbacks</text>
+  </g>
+
+  <path class="arrow" d="M320 252 C342 252 357 252 385 252"/>
+  <path class="arrow" d="M645 252 C672 252 688 252 710 252"/>
+  <path class="arrow" d="M995 252 C1020 252 1035 252 1060 252"/>
+
+  <!-- Row 2 -->
+  <g transform="translate(90 455)">
+    <rect class="box box-risk" width="315" height="140" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="22" y="32">5</text>
+    <text class="label" x="55" y="34">Quantified forecast</text>
+    <text class="small" x="24" y="66">graded opinion on likely price moves</text>
+    <text class="formula" x="24" y="94">-20 sell ... 0 neutral ... +20 buy</text>
+    <text class="small" x="24" y="120">do not change forecast after bet opens</text>
+  </g>
+
+  <g transform="translate(475 455)">
+    <rect class="box box-risk" width="315" height="140" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="22" y="32">6</text>
+    <text class="label" x="55" y="34">Stop-loss control</text>
+    <text class="small" x="24" y="66">systematic trailing stop only</text>
+    <text class="formula" x="24" y="94">stop = high/low +/- X * price vol</text>
+    <text class="small" x="24" y="120">no separate profit target</text>
+  </g>
+
+  <g transform="translate(860 455)">
+    <rect class="box box-risk" width="450" height="140" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="22" y="32">7</text>
+    <text class="label" x="55" y="34">Volatility targeting</text>
+    <text class="small" x="24" y="66">annual cash vol target = capital * target %</text>
+    <text class="small" x="24" y="90">daily cash vol target = annual target / 16</text>
+    <text class="formula" x="24" y="118">volatility scalar = daily cash vol / instrument currency vol</text>
+  </g>
+
+  <path class="arrow" d="M1228 315 C1228 370 245 370 245 455"/>
+  <path class="arrow" d="M405 525 C428 525 452 525 475 525"/>
+  <path class="arrow" d="M790 525 C815 525 835 525 860 525"/>
+
+  <!-- Row 3 -->
+  <g transform="translate(105 735)">
+    <rect class="box box-portfolio" width="370" height="115" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="22" y="32">8</text>
+    <text class="label" x="55" y="34">Subsystem position</text>
+    <text class="formula" x="24" y="70">forecast * volatility scalar / 10</text>
+    <text class="small" x="24" y="96">position before portfolio diversification</text>
+  </g>
+
+  <g transform="translate(565 735)">
+    <rect class="box box-portfolio" width="390" height="115" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="22" y="32">9</text>
+    <text class="label" x="55" y="34">Portfolio position</text>
+    <text class="formula" x="24" y="70">subsystem position * instrument weight * IDM</text>
+    <text class="small" x="24" y="96">IDM adjusts for number and correlation of bets</text>
+  </g>
+
+  <g transform="translate(1045 735)">
+    <rect class="box box-portfolio" width="330" height="115" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="18" y="32">10</text>
+    <text class="label" x="58" y="34">Target position</text>
+    <text class="small" x="24" y="70">round to nearest tradable block</text>
+    <text class="small" x="24" y="96">do not exceed maximum simultaneous bets</text>
+  </g>
+
+  <path class="arrow" d="M1085 595 C1085 660 290 660 290 735"/>
+  <path class="arrow" d="M475 793 C505 793 535 793 565 793"/>
+  <path class="arrow" d="M955 793 C985 793 1015 793 1045 793"/>
+
+  <!-- Row 4 -->
+  <g transform="translate(105 980)">
+    <rect class="box box-exec" width="350" height="110" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="18" y="32">11</text>
+    <text class="label" x="58" y="34">Issue trades</text>
+    <text class="small" x="24" y="68">compare current vs target position</text>
+    <text class="small" x="24" y="93">trade only if difference is material</text>
+  </g>
+
+  <g transform="translate(550 980)">
+    <rect class="box box-exec" width="385" height="110" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="18" y="32">12</text>
+    <text class="label" x="58" y="34">Daily housekeeping</text>
+    <text class="small" x="24" y="68">check stops, account value, prices</text>
+    <text class="small" x="24" y="93">refresh volatility and stop levels</text>
+  </g>
+
+  <g transform="translate(1030 980)">
+    <rect class="box box-exec" width="350" height="110" rx="18"/>
+    <circle class="badge" cx="27" cy="27" r="15"/><text class="badge-text" x="18" y="32">13</text>
+    <text class="label" x="58" y="34">Review and calibrate</text>
+    <text class="small" x="24" y="68">costs, turnover, rule correlations</text>
+    <text class="small" x="24" y="93">scalars, weights, universe quality</text>
+  </g>
+
+  <path class="arrow" d="M1210 850 C1210 915 280 915 280 980"/>
+  <path class="arrow" d="M455 1035 C490 1035 515 1035 550 1035"/>
+  <path class="arrow" d="M935 1035 C975 1035 995 1035 1030 1035"/>
+
+  <!-- Feedback loop -->
+  <path class="soft-arrow" d="M1205 980 C1420 900 1445 300 1395 252"/>
+  <text class="note" x="1180" y="935">Feedback loop: improve hypotheses, scalars, weights, costs, and universe</text>
+
+  <!-- Footer notes -->
+  <rect x="70" y="1138" width="1360" height="36" rx="12" fill="#ffffff" stroke="#d9dee8"/>
+  <text class="note" x="90" y="1161">Key idea: a rule produces a quantified forecast, not a BUY/SELL command. Position size comes later from volatility targeting, portfolio weights, and risk controls.</text>
+</svg>

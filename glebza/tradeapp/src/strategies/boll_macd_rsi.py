@@ -2,7 +2,8 @@ import numpy as np
 import tulipy as ti
 from binance.enums import *
 
-from glebza.tradeapp.src.framework.forecasts import FORECAST_CAP, combine_weighted_forecasts
+from glebza.tradeapp.src.framework.forecasts.combined_forecast import combine_weighted_forecasts
+from glebza.tradeapp.src.framework.forecasts.ewmac_forecast import FORECAST_CAP
 
 
 class BollMacdRsiStrategy:
