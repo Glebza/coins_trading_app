@@ -6,7 +6,8 @@ import argparse
 from datetime import datetime
 from typing import Optional
 
-from framework.backtest import BacktestResult, run_single_instrument_backtest
+from framework.backtest import BacktestAccount, BacktestResult, run_single_instrument_backtest
+from framework.backtest.plotting import plot_backtest_metrics
 from framework.instruments.instrument import _parse_dt
 from framework.instruments.instruments import TInvestInstrumentsService
 
@@ -29,6 +30,8 @@ def _print_summary(
     *,
     ticker: str,
     interval: str,
+    account: BacktestAccount,
+    block_value: float,
     start_dt: Optional[datetime],
     end_dt: Optional[datetime],
 ) -> None:
@@ -39,6 +42,10 @@ def _print_summary(
 
     print(f"ticker={ticker}")
     print(f"interval={interval}")
+    print(f"trading_capital={account.trading_capital:.2f}")
+    print(f"annualized_volatility_target={account.annualized_volatility_target:.2%}")
+    print(f"commission_rate={account.commission_rate:.4%}")
+    print(f"block_value={block_value:.4f}")
     print(f"requested_start={start_dt}")
     print(f"requested_end={end_dt}")
     print(f"rows={len(rows)}")
@@ -83,6 +90,35 @@ def main() -> None:
         default=None,
         help="Override the annualization factor; defaults by interval.",
     )
+    parser.add_argument(
+        "--trading-capital",
+        type=float,
+        default=100_000.0,
+        help="Cash capital at risk in account currency.",
+    )
+    parser.add_argument(
+        "--annualized-volatility-target",
+        type=float,
+        default=0.25,
+        help="Desired annualized standard deviation, e.g. 0.25 for 25%%.",
+    )
+    parser.add_argument(
+        "--block-value",
+        type=float,
+        default=1.0,
+        help="Currency value of one price point for one instrument unit.",
+    )
+    parser.add_argument(
+        "--commission-rate",
+        type=float,
+        default=0.0,
+        help="Broker commission as decimal fraction of traded notional, e.g. 0.0005 for 0.05%%.",
+    )
+    parser.add_argument(
+        "--plot-path",
+        default=None,
+        help="Optional PNG path for total return, close price, forecast, and position size chart.",
+    )
     args = parser.parse_args()
 
     start_dt = _parse_dt(args.start_dt)
@@ -103,14 +139,29 @@ def main() -> None:
             f"between {start_dt} and {end_dt}."
         )
 
-    result = run_single_instrument_backtest(klines, periods_per_year=periods_per_year)
+    account = BacktestAccount(
+        trading_capital=args.trading_capital,
+        annualized_volatility_target=args.annualized_volatility_target,
+        commission_rate=args.commission_rate,
+    )
+    result = run_single_instrument_backtest(
+        klines,
+        account=account,
+        periods_per_year=periods_per_year,
+        block_value=args.block_value,
+    )
     _print_summary(
         result,
         ticker=args.ticker,
         interval=args.interval,
+        account=account,
+        block_value=args.block_value,
         start_dt=start_dt,
         end_dt=end_dt,
     )
+    if args.plot_path:
+        path = plot_backtest_metrics(result, args.plot_path)
+        print(f"plot_path={path}", flush=True)
 
 
 if __name__ == "__main__":

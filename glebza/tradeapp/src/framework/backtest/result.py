@@ -17,3 +17,16 @@ class BacktestResult:
     annualized_volatility: float
     sharpe: float
     max_drawdown: float
+
+
+@dataclass(frozen=True)
+class PortfolioBacktestResult:
+    """Aggregated portfolio backtest output and summary statistics."""
+
+    rows: pd.DataFrame
+    instrument_results: dict[str, BacktestResult]
+    total_return: float
+    annualized_return: float
+    annualized_volatility: float
+    sharpe: float
+    max_drawdown: float

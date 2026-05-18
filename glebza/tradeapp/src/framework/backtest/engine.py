@@ -6,26 +6,35 @@ from math import sqrt
 
 import pandas as pd
 
+from glebza.tradeapp.src.framework.backtest.account import BacktestAccount
 from glebza.tradeapp.src.framework.backtest.result import BacktestResult
 from glebza.tradeapp.src.framework.forecasts.combined_forecast import combined_ewmac_forecast_series
+from glebza.tradeapp.src.framework.sizing import single_instrument_position_size
+from glebza.tradeapp.src.framework.volatility import (
+    estimate_daily_price_volatility,
+)
 
 
 def run_single_instrument_backtest(
     klines: pd.DataFrame,
     *,
+    account: BacktestAccount | None = None,
     periods_per_year: int = 252,
+    block_value: float = 1.0,
 ) -> BacktestResult:
     """Backtest one instrument with the current combined EWMAC forecast.
 
-    This is intentionally simple: it uses the combined forecast as exposure,
-    ``position = forecast / 10``. Later framework steps will replace this with
-    volatility targeting, portfolio weights, costs, and position inertia.
+    This is intentionally simple: it converts the combined forecast into a
+    volatility-targeted position. Later framework steps will add portfolio
+    weights, costs, and position inertia.
     """
+    if account is None:
+        account = BacktestAccount(trading_capital=100_000.0, annualized_volatility_target=0.35)
 
     # Carver stage: instrument universe / portfolio.
     # MVP: this function backtests one instrument only. Later portfolio code will
     # combine multiple instruments with instrument weights and diversification.
-    # we alsoo will use the different historical data for different instruments
+    # Later, each instrument can also use its own historical data window.
     rows = klines.copy()
     if "k_interval" in rows.columns:
         rows = rows.sort_values("k_interval").reset_index(drop=True)
@@ -37,20 +46,31 @@ def run_single_instrument_backtest(
     # Carver stage: applicable trading rules and forecast combination.
     # MVP: use the default combined EWMAC forecast.
     rows["combined_forecast"] = combined_ewmac_forecast_series(rows)
-    
 
     # Carver stage: expected volatility and risk target.
-    # TODO: estimate expected price volatility and convert the forecast into a
-    # volatility-targeted position.
+    rows["price_volatility"] = estimate_daily_price_volatility(rows["close_price"])
 
     # Carver stage: position sizing.
-    # MVP placeholder: treat forecast / 10 as direct exposure.
-    rows["position"] = rows["combined_forecast"] / 10.0
+    rows["position"] = single_instrument_position_size(
+        rows["close_price"],
+        rows["combined_forecast"],
+        rows["price_volatility"],
+        account,
+        periods_per_year=periods_per_year,
+        block_value=block_value,
+    ).fillna(0.0)
 
     # Carver stage: execution, costs, and position inertia.
-    # TODO: apply turnover costs, slippage, and no-trade buffers before returns.
+    # TODO: apply slippage and no-trade buffers before returns.
     rows["return"] = rows["close_price"].pct_change().fillna(0.0)
-    rows["strategy_return"] = (rows["position"].shift(1).fillna(0.0) * rows["return"]).fillna(0.0)
+    rows["price_change"] = rows["close_price"].diff().fillna(0.0)
+    rows["turnover"] = rows["position"].diff().abs().fillna(rows["position"].abs())
+    rows["commission"] = rows["turnover"] * rows["close_price"] * block_value * account.commission_rate
+    rows["gross_strategy_return"] = (
+        rows["position"].shift(1).fillna(0.0) * rows["price_change"] * block_value / float(account.trading_capital)
+    ).fillna(0.0)
+    rows["commission_return"] = rows["commission"] / float(account.trading_capital)
+    rows["strategy_return"] = rows["gross_strategy_return"] - rows["commission_return"]
 
     # Carver stage: account curve and risk reporting.
     rows["equity"] = (1.0 + rows["strategy_return"]).cumprod()

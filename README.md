@@ -93,7 +93,16 @@ WHERE p.med_volume >= mvt.p80
 
 ## Trading rules and forecasts
 
-В коде: `glebza/tradeapp/src/framework/forecasts.py`.
+В коде: `glebza/tradeapp/src/framework/forecasts/`.
+
+Реализовано:
+
+- `ewmac_forecast.py` — Carver-style EWMAC forecast:
+  `fast EWMA - slow EWMA`, нормализация на волатильность изменений цены,
+  `forecast_scalar`, cap в диапазоне `[-20, +20]`.
+- `combined_forecast.py` — комбинирование нескольких EWMAC-вариаций:
+  `EWMAC(4,16)`, `EWMAC(16,64)`, `EWMAC(64,256)`.
+- Forecast остаётся continuous signal, а не `BUY` / `SELL` / `WAIT`.
 
 ### Терминология Карвера (для блока 2)
 
@@ -226,6 +235,126 @@ regulatory constraints. Если ответа нет — гипотеза, ск�
 - Цель по **Sharpe ratio**: **1.0**.
 - Целевая **percentage volatility**: **27%**.
 
+В коде:
+
+- `glebza/tradeapp/src/framework/volatility.py`
+- `glebza/tradeapp/src/framework/sizing.py`
+- `glebza/tradeapp/src/framework/backtest/account.py`
+
+Реализовано:
+
+- `BacktestAccount` с `trading_capital`, `capital`, `annualized_volatility_target`,
+  `commission_rate`.
+- Расчёт annual cash volatility target:
+  `trading_capital * annualized_volatility_target`.
+- Расчёт daily cash volatility target:
+  `annual_cash_volatility_target / sqrt(periods_per_year)`.
+- Оценка daily price volatility через exponentially weighted std от `close.diff()`.
+- Простое single-instrument position sizing:
+
+```text
+daily_risk_pct = daily_cash_volatility_target / trading_capital
+price_volatility_pct = price_volatility / close_price
+capital_pct = forecast / 10 * daily_risk_pct / price_volatility_pct
+position_units = trading_capital * capital_pct / close_price
+```
+
+---
+
+## Framework backtest
+
+В коде: `glebza/tradeapp/src/framework/backtest/`.
+
+Реализовано:
+
+- `engine.py` — single-instrument Carver-style backtest.
+- `__main__.py` — CLI: `python -m framework.backtest`.
+- `plotting.py` — PNG-график после бэктеста.
+- `result.py` — summary object с `total_return`, `annualized_return`,
+  `annualized_volatility`, `sharpe`, `max_drawdown`.
+
+Пайплайн текущего MVP:
+
+```text
+stored klines
+ -> combined EWMAC forecast
+ -> expected price volatility
+ -> position size
+ -> price change
+ -> gross return
+ -> commission
+ -> net strategy return
+ -> equity / drawdown / summary
+```
+
+Backtest избегает lookahead в доходности:
+
+```python
+strategy_return = previous_position * price_change / trading_capital
+```
+
+где `previous_position` берётся через `position.shift(1)`.
+
+Пример запуска:
+
+```bash
+PYTHONPATH=".:glebza/tradeapp/src" \
+DATABASE_URL="postgresql://trader@localhost:5432/traderdb" \
+DATABASE_DEFAULT_SCHEMA="public" \
+python -m framework.backtest \
+  --ticker WUSH \
+  --interval 1d \
+  --start-dt 2025-01-01T00:00:00+00:00 \
+  --end-dt 2025-12-31T23:59:59+00:00 \
+  --trading-capital 100000 \
+  --annualized-volatility-target 0.35 \
+  --commission-rate 0.0005 \
+  --plot-path reports/wush-backtest-2025.png
+```
+
+График содержит четыре панели:
+
+- total return;
+- close price;
+- forecast value;
+- position size.
+
+---
+
+## Transaction costs
+
+Комиссия брокера добавлена в MVP как percentage fee от traded notional.
+
+В `BacktestAccount`:
+
+```text
+commission_rate = 0.0005  # 0.05%
+```
+
+В backtest:
+
+```text
+turnover = abs(position.diff())
+commission = turnover * close_price * block_value * commission_rate
+strategy_return = gross_strategy_return - commission / trading_capital
+```
+
+Для T‑Invest:
+
+- `TBankInstrumentService.get_tariff_name()` получает название тарифа через API.
+- `TBankInstrumentService.get_commission_rate()` читает configured rate из env.
+- Сам T‑Invest API не отдаёт точный процент брокерской комиссии; процент нужно брать из тарифного PDF или личного тарифа и задавать вручную:
+
+```bash
+export T_INVEST_COMMISSION_RATE=0.0005
+```
+
+PDF с тарифами сохранён здесь:
+
+```text
+docs/invest-tariff-fees.pdf
+```
+
 ---
 
 ## Сборка вселенной акций (черновик пайплайна)
@@ -237,6 +366,6 @@ regulatory constraints. Если ответа нет — гипотеза, ск�
 
 Вопросы сплошняком:
 как считать slippage? 
-
-
-
+как считать skew? 
+как учитывать leverage ? 
+надо добавить stoploss в forecast 

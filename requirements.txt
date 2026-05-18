@@ -12,6 +12,7 @@ numpy>=1.24.0
 websockets
 websocket-client
 pandas>=2.0.0
+matplotlib
 scikit-learn>=1.3.0
 # Exact pins reduce pip backtracking (pymexc vs t-tech protobuf, etc.)
 pymexc==1.2.19
