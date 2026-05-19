@@ -12,6 +12,7 @@ class PortfolioInstrument:
     ticker: str
     weight: float
     block_value: float = 1.0
+    lot_size: int = 1
 
 @dataclass(frozen=True)
 class Portfolio:
@@ -24,6 +25,8 @@ class Portfolio:
     instruments: list[PortfolioInstrument]
 
     def __post_init__(self) -> None:
+        if not self.instruments:
+            raise ValueError("portfolio must contain at least one instrument")
 
         tickers = [instrument.ticker for instrument in self.instruments]
         if len(tickers) != len(set(tickers)):

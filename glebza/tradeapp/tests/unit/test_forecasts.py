@@ -5,9 +5,10 @@ import pandas as pd
 
 from glebza.tradeapp.src.framework.forecasts.combined_forecast import (
     DEFAULT_EWMAC_VARIATIONS,
+    attach_ewmac_forecast_columns,
+    calculate_combined_ewmac_forecast_series,
     combine_forecast_series,
     combine_weighted_forecasts,
-    combined_ewmac_forecast_series,
     equal_weights,
     ewmac_forecast_batch,
     ewmac_variation_name,
@@ -79,12 +80,24 @@ class TestCombineWeightedForecasts(unittest.TestCase):
         forecasts = ewmac_forecast_batch(klines, DEFAULT_EWMAC_VARIATIONS)
         self.assertEqual(set(forecasts), {ewmac_variation_name(config) for config in DEFAULT_EWMAC_VARIATIONS})
 
-    def test_combined_ewmac_forecast_series(self):
+    def test_calculate_combined_ewmac_forecast_series(self):
         klines = klines_dataframe([100 + i + (0.5 if i % 2 else 0.0) for i in range(300)])
-        combined = combined_ewmac_forecast_series(klines)
+        combined = calculate_combined_ewmac_forecast_series(klines)
         self.assertEqual(len(combined), len(klines))
         self.assertLessEqual(combined.max(), FORECAST_CAP)
         self.assertGreaterEqual(combined.min(), -FORECAST_CAP)
+
+    def test_attach_ewmac_forecast_columns_adds_three_variations(self):
+        klines = klines_dataframe([100 + i + (0.5 if i % 2 else 0.0) for i in range(300)])
+        rows = attach_ewmac_forecast_columns(klines)
+
+        expected_names = {f"forecast_{ewmac_variation_name(config)}" for config in DEFAULT_EWMAC_VARIATIONS}
+        self.assertEqual(expected_names, {column for column in rows.columns if column.startswith("forecast_ewmac_")})
+
+        weights = equal_weights([name.removeprefix("forecast_") for name in expected_names])
+        components = {name.removeprefix("forecast_"): rows[name] for name in expected_names}
+        expected_combined = combine_forecast_series(components, weights)
+        pd.testing.assert_series_equal(rows["combined_forecast"], expected_combined, check_names=False)
 
 
 class TestEWMACForecast(unittest.TestCase):

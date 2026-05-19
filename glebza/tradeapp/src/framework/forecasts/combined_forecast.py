@@ -73,12 +73,29 @@ def combine_forecast_series(
     return cap_forecast(total, floor=-cap, cap=cap)
 
 
-def combined_ewmac_forecast_series(
+def attach_ewmac_forecast_columns(
+    klines: pd.DataFrame,
+    configs: Iterable[EWMACConfig] = DEFAULT_EWMAC_VARIATIONS,
+    weights: Mapping[str, float] | None = None,
+    cap: float = FORECAST_CAP,
+) -> pd.DataFrame:
+    """Add one column per EWMAC variation and a capped ``combined_forecast`` column."""
+    rows = klines.copy()
+    forecasts = ewmac_forecast_batch(rows, configs)
+    resolved_weights = dict(weights or equal_weights(forecasts.keys()))
+
+    for name, series in forecasts.items():
+        rows[f"forecast_{name}"] = series
+
+    rows["combined_forecast"] = combine_forecast_series(forecasts, resolved_weights, cap=cap)
+    return rows
+
+
+def calculate_combined_ewmac_forecast_series(
     klines: pd.DataFrame,
     configs: Iterable[EWMACConfig] = DEFAULT_EWMAC_VARIATIONS,
     weights: Mapping[str, float] | None = None,
     cap: float = FORECAST_CAP,
 ) -> pd.Series:
     """Calculate and combine the default EWMAC variation batch."""
-    forecasts = ewmac_forecast_batch(klines, configs)
-    return combine_forecast_series(forecasts, weights or equal_weights(forecasts.keys()), cap=cap)
+    return attach_ewmac_forecast_columns(klines, configs, weights, cap=cap)["combined_forecast"]

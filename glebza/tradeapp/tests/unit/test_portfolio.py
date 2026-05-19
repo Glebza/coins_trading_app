@@ -57,6 +57,10 @@ class TestPortfolio(unittest.TestCase):
                 ]
             )
 
+    def test_portfolio_instrument_rejects_invalid_lot_size(self):
+        with self.assertRaises(ValueError):
+            PortfolioInstrument("WUSH", 1.0, lot_size=0)
+
     def test_run_weighted_portfolio_backtest(self):
         portfolio = Portfolio(
             [

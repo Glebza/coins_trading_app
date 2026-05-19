@@ -239,12 +239,12 @@ regulatory constraints. Если ответа нет — гипотеза, ск�
 
 - `glebza/tradeapp/src/framework/volatility.py`
 - `glebza/tradeapp/src/framework/sizing.py`
-- `glebza/tradeapp/src/framework/backtest/account.py`
+- `glebza/tradeapp/src/framework/account.py`
 
 Реализовано:
 
-- `BacktestAccount` с `trading_capital`, `capital`, `annualized_volatility_target`,
-  `commission_rate`.
+- `TradingAccount` с `trading_capital`, `capital`, `annualized_volatility_target`,
+  `commission_rate`, `max_capital_multiple`.
 - Расчёт annual cash volatility target:
   `trading_capital * annualized_volatility_target`.
 - Расчёт daily cash volatility target:
@@ -325,7 +325,7 @@ python -m framework.backtest \
 
 Комиссия брокера добавлена в MVP как percentage fee от traded notional.
 
-В `BacktestAccount`:
+В `TradingAccount`:
 
 ```text
 commission_rate = 0.0005  # 0.05%

@@ -1,0 +1,60 @@
+---
+description: Framework code must work for backtest and live trading
+globs: glebza/tradeapp/src/framework/**
+alwaysApply: false
+---
+
+# Framework: Backtest + Live Trading
+
+Code under `glebza/tradeapp/src/framework/` is **shared runtime logic**. Every class/module here should be usable from both:
+
+- **Backtest** (`framework/backtest/`, CLI, historical klines)
+- **Live trading** (future execution path, broker feeds, real orders)
+
+## Layering
+
+```text
+Data adapters (DB, broker, CSV)  →  framework (pure)  →  backtest or live runner
+```
+
+| Layer | May contain | Must not contain |
+|-------|-------------|------------------|
+| `framework/` | forecasts, sizing, risk, volatility, `TradingAccount` | Postgres, broker APIs, CLI, plotting, DB schemas |
+| `framework/backtest/` | simulation loop, `BacktestResult`, portfolio aggregation, plots | broker orders (except simulated fills inside engine) |
+| `exchanges/`, `framework/instruments/` | loading klines, instruments | position-sizing rules duplicated elsewhere |
+
+## Design rules
+
+1. **Pure inputs/outputs** — Core functions take prices/forecasts/account config and return series, targets, or positions. Callers pass data in; framework does not fetch it.
+2. **No backtest-only names** — Use `TradingAccount`, `capital_at_risk`, `trading_capital`, not `BacktestAccount` or backtest-only types in `framework/`.
+3. **Configurable behaviour** — Flags and parameters (commission, trailing stop, compounding capital, FDM) live on account/config or function args, not hard-coded for backtest.
+4. **No lookahead** — Signals at time `t` use data ≤ `t`. Live and backtest must share the same bar-by-bar semantics (e.g. `position.shift(1)` for PnL in backtest).
+5. **One implementation** — Do not fork “live sizing” vs “backtest sizing”. Extend the existing module if live needs an extra step (e.g. order rounding).
+
+## Examples
+
+```python
+# ✅ GOOD — framework/sizing.py
+def target_position_units(close, forecast, price_volatility, capital_at_risk, account, ...) -> float:
+    ...
+
+# ❌ BAD — framework/sizing.py
+def target_position_units_from_postgres(ticker: str, session) -> float:
+    ...
+```
+
+```python
+# ✅ GOOD — backtest engine orchestrates; framework stays pure
+rows = combined_forecast.attach_ewmac_forecast_columns(rows)
+position = sizing.cap_position_units(...)
+
+# ❌ BAD — forecast module imports TInvestInstrumentsService
+```
+
+## When adding features
+
+- **Forecasts / risk / sizing** → `framework/forecasts/`, `framework/risk/`, `framework/sizing.py`, `framework/volatility.py`
+- **“What if” on history** → `framework/backtest/`
+- **Orders, fills, broker** → future live/execution layer, calling the same framework functions
+
+Add tests on framework modules without DB when behaviour matters for both modes.

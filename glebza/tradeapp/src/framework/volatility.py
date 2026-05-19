@@ -6,15 +6,15 @@ from math import sqrt
 
 import pandas as pd
 
-from glebza.tradeapp.src.framework.backtest.account import BacktestAccount
+from glebza.tradeapp.src.framework.account import TradingAccount
 
 
-def annual_cash_volatility_target(account: BacktestAccount) -> float:
+def annual_cash_volatility_target(account: TradingAccount) -> float:
     """Annual expected cash standard deviation of portfolio returns."""
     return float(account.trading_capital) * account.annualized_volatility_target
 
 
-def daily_cash_volatility_target(account: BacktestAccount, *, periods_per_year: int = 252) -> float:
+def daily_cash_volatility_target(account: TradingAccount, *, periods_per_year: int = 252) -> float:
     """Daily cash volatility target, annual target divided by square root of time."""
     return annual_cash_volatility_target(account) / sqrt(periods_per_year)
 
