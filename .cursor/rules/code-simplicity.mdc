@@ -12,3 +12,4 @@ alwaysApply: true
 - Avoid over-engineering, speculative extensibility, and unnecessary indirection.
 - Write code based on software development best practices.
 - Preserve tests and type clarity for behavior that matters.
+- Prefer function and method names that start with a verb describing the action they perform.

@@ -34,14 +34,14 @@ def plot_backtest_metrics(result: BacktestResult, output_path: str | Path) -> Pa
     axes[2].set_title("Close Price")
     axes[2].set_ylabel("Price")
 
-    ewmac_columns = sorted(column for column in rows.columns if column.startswith("forecast_ewmac_"))
-    for column in ewmac_columns:
+    forecast_columns = sorted(column for column in rows.columns if column.startswith("forecast_"))
+    for column in forecast_columns:
         axes[3].plot(x, rows[column], label=column.removeprefix("forecast_"), alpha=0.7, linewidth=1.0)
     axes[3].plot(x, rows["combined_forecast"], label="combined", color="black", linewidth=2.0)
     axes[3].axhline(0.0, color="black", linewidth=0.8)
-    axes[3].set_title("EWMAC Forecasts (3 variations + combined)")
+    axes[3].set_title("Forecasts")
     axes[3].set_ylabel("Forecast")
-    if ewmac_columns:
+    if forecast_columns:
         axes[3].legend(loc="best", fontsize=8)
 
     axes[4].plot(x, rows["position"])

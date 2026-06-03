@@ -1,6 +1,8 @@
-"""Allow `python -m framework.instruments` (CLI lives in instruments.py)."""
+import sys
 
-from framework.instruments.instruments import main
-
-if __name__ == "__main__":
-    main()
+print(
+    "framework.instruments CLI moved to: python -m manutil <command>\n"
+    "Commands: sync-shares | load-klines-all | load-klines | update-volatility",
+    file=sys.stderr,
+)
+raise SystemExit(1)

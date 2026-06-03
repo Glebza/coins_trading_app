@@ -20,7 +20,7 @@ fi
 echo "Starting backtest from $start_dtm to $end_dtm"
 
 # Run the Python script with the provided parameters
-python3 /Users/glebskalatsky/PycharmProjects/coins_trading_app/glebza/tradeapp/tests/backtest/test_deviations_strategy.py \
+python3 "$(dirname "$0")/test_boll_macd_strategy.py" \
   --kline_interval=1m \
   --backtest_start_date="$start_dtm" \
   --backtest_end_date="$end_dtm" \

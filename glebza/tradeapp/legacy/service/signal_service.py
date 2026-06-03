@@ -1,5 +1,5 @@
 import requests, logging
-import adapters.telegram_adapter as adapter
+from glebza.tradeapp.legacy.adapters import telegram_adapter as adapter
 
 api_base_url = "https://fapi.binance.com/{}"
 api_long_short_ratio = "futures/data/takerlongshortRatio?symbol={}&period=1h&limit=2"

@@ -1,4 +1,4 @@
-from glebza.tradeapp.tests.backtest.repository.backtest_base_repository import BacktestLaunch, BacktestDeal, \
+from glebza.tradeapp.legacy.backtest.repository.backtest_base_repository import BacktestLaunch, BacktestDeal, \
     BacktestStrategyDetail
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy import create_engine

@@ -1,16 +1,16 @@
 import numpy
 import numpy as np
 from talib import MA_Type
-from strategies.neuronetwork import NeuroNetwork
-import service.order_service as service
-import service.market_service as m_service
+from glebza.tradeapp.legacy.strategies.neuronetwork import NeuroNetwork
+from glebza.tradeapp.legacy.service import order_service as service
+from glebza.tradeapp.legacy.service import market_service as m_service
 import logging
 import csv
 from datetime import datetime, timedelta
 from binance import Client
 import talib
 
-from glebza.tradeapp.tests.backtest.repository.backtest_repository import BacktestRepository
+from glebza.tradeapp.legacy.backtest.repository.backtest_repository import BacktestRepository
 
 portfolio_sum = 700
 qty = 0
@@ -21,7 +21,7 @@ MINUTES_IN_THE_DAY = 125
 
 SYMBOL = 'BTCUSDT'
 
-FILENAME = 'PycharmProjects/CoinsTradeApp/glebza/tradeapp/tests/backtest/resources/backtest_data.csv'
+FILENAME = 'glebza/tradeapp/legacy/backtest/resources/backtest_data.csv'
 
 k_interval_idx = 0
 open_idx = 1

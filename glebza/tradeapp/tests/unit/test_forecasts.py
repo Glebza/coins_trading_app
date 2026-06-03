@@ -3,10 +3,18 @@ import unittest
 
 import pandas as pd
 
+from glebza.tradeapp.src.framework.forecasts.carry_forecast import (
+    add_carry_forecast_columns,
+    calculate_annual_dividend_yield_series,
+    calculate_equity_carry_forecast,
+    calculate_equity_carry_raw,
+    calculate_funding_rate_series,
+)
 from glebza.tradeapp.src.framework.forecasts.combined_forecast import (
     DEFAULT_EWMAC_VARIATIONS,
     attach_ewmac_forecast_columns,
     calculate_combined_ewmac_forecast_series,
+    combine_ewmac_and_carry_forecast_series,
     combine_forecast_series,
     combine_weighted_forecasts,
     equal_weights,
@@ -22,6 +30,10 @@ from glebza.tradeapp.src.framework.forecasts.ewmac_forecast import (
     ewmac_forecast_last,
     ewmac_forecast_series,
     price_volatility_series,
+)
+from glebza.tradeapp.src.framework.forecasts.forecast_diversification import (
+    calculate_forecast_correlation,
+    calculate_forecast_diversification_multiplier,
 )
 
 
@@ -75,6 +87,39 @@ class TestCombineWeightedForecasts(unittest.TestCase):
         combined = combine_forecast_series(forecasts, {"a": 0.5, "b": 0.5})
         self.assertEqual(combined.tolist(), [0.0, 10.0, 20.0])
 
+    def test_combine_forecast_series_applies_fdm_before_cap(self):
+        forecasts = {
+            "a": pd.Series([5.0, 10.0]),
+            "b": pd.Series([5.0, 10.0]),
+        }
+
+        combined = combine_forecast_series(
+            forecasts,
+            {"a": 0.5, "b": 0.5},
+            diversification_multiplier=2.0,
+        )
+
+        self.assertEqual(combined.tolist(), [10.0, 20.0])
+
+    def test_forecast_diversification_multiplier_uses_correlation(self):
+        uncorrelated = pd.DataFrame(
+            [[1.0, 0.0], [0.0, 1.0]],
+            index=["a", "b"],
+            columns=["a", "b"],
+        )
+
+        fdm = calculate_forecast_diversification_multiplier(uncorrelated, {"a": 0.5, "b": 0.5})
+
+        self.assertAlmostEqual(fdm, 2 ** 0.5)
+
+    def test_combine_ewmac_and_carry_forecast_series(self):
+        combined = combine_ewmac_and_carry_forecast_series(
+            pd.Series([10.0, 20.0]),
+            pd.Series([-10.0, 20.0]),
+        )
+
+        self.assertEqual(combined.tolist(), [0.0, 20.0])
+
     def test_ewmac_forecast_batch_uses_variation_names(self):
         klines = klines_dataframe([100 + i + (0.5 if i % 2 else 0.0) for i in range(300)])
         forecasts = ewmac_forecast_batch(klines, DEFAULT_EWMAC_VARIATIONS)
@@ -96,8 +141,16 @@ class TestCombineWeightedForecasts(unittest.TestCase):
 
         weights = equal_weights([name.removeprefix("forecast_") for name in expected_names])
         components = {name.removeprefix("forecast_"): rows[name] for name in expected_names}
-        expected_combined = combine_forecast_series(components, weights)
+        correlation = calculate_forecast_correlation(components)
+        fdm = calculate_forecast_diversification_multiplier(correlation, weights)
+        expected_combined = combine_forecast_series(
+            components,
+            weights,
+            diversification_multiplier=fdm,
+        )
         pd.testing.assert_series_equal(rows["combined_forecast"], expected_combined, check_names=False)
+        self.assertIn("combined_forecast_before_fdm", rows.columns)
+        self.assertIn("combined_forecast_fdm", rows.columns)
 
 
 class TestEWMACForecast(unittest.TestCase):
@@ -133,6 +186,77 @@ class TestEWMACForecast(unittest.TestCase):
         klines = self._klines([100 + i + (0.5 if i % 2 else 0.0) for i in range(90)])
         config = EWMACConfig(fast_span=4, slow_span=16, volatility_span=10, forecast_scalar=2.0)
         self.assertGreater(ewmac_forecast_last(klines, config), 0.0)
+
+
+class TestCarryForecast(unittest.TestCase):
+    def test_raw_carry_is_excess_yield_divided_by_volatility(self):
+        self.assertAlmostEqual(calculate_equity_carry_raw(0.12, 0.08, 0.20), 0.20)
+
+    def test_carry_forecast_is_scaled_and_capped(self):
+        self.assertEqual(calculate_equity_carry_forecast(0.30, 0.00, 0.10), FORECAST_CAP)
+        self.assertEqual(calculate_equity_carry_forecast(0.00, 0.30, 0.10), -FORECAST_CAP)
+
+    def test_dividend_yield_uses_only_known_dividends(self):
+        klines = klines_dataframe([100, 100, 100])
+        dividends = [
+            {
+                "record_date": datetime(2024, 1, 2, tzinfo=timezone.utc),
+                "dividend_net": 10.0,
+                "declared_date": datetime(2024, 1, 2, tzinfo=timezone.utc),
+            },
+            {
+                "record_date": datetime(2024, 1, 3, tzinfo=timezone.utc),
+                "dividend_net": 50.0,
+                "declared_date": datetime(2024, 1, 10, tzinfo=timezone.utc),
+            },
+        ]
+
+        series = calculate_annual_dividend_yield_series(klines, dividends)
+
+        self.assertEqual(series.tolist(), [0.0, 0.10, 0.10])
+
+    def test_funding_rate_uses_latest_published_rate(self):
+        klines = klines_dataframe([100, 100, 100])
+        rates = [
+            {
+                "rate_date": datetime(2023, 12, 31, tzinfo=timezone.utc),
+                "annual_rate": 0.15,
+                "published_at": datetime(2024, 1, 2, tzinfo=timezone.utc),
+            },
+            {
+                "rate_date": datetime(2024, 1, 2, tzinfo=timezone.utc),
+                "annual_rate": 0.16,
+                "published_at": datetime(2024, 1, 3, tzinfo=timezone.utc),
+            },
+        ]
+
+        series = calculate_funding_rate_series(klines, rates)
+
+        self.assertEqual(series.tolist(), [0.0, 0.15, 0.16])
+
+    def test_add_carry_forecast_columns(self):
+        klines = klines_dataframe([100, 100])
+        dividends = [
+            {
+                "record_date": datetime(2024, 1, 2, tzinfo=timezone.utc),
+                "dividend_net": 10.0,
+                "declared_date": datetime(2024, 1, 2, tzinfo=timezone.utc),
+            }
+        ]
+        rates = [
+            {
+                "rate_date": datetime(2023, 12, 31, tzinfo=timezone.utc),
+                "annual_rate": 0.05,
+                "published_at": datetime(2024, 1, 1, tzinfo=timezone.utc),
+            }
+        ]
+
+        rows = add_carry_forecast_columns(klines, dividends, rates, annualized_volatility=0.25)
+
+        self.assertIn("dividend_yield", rows.columns)
+        self.assertIn("funding_rate", rows.columns)
+        self.assertIn("forecast_carry", rows.columns)
+        self.assertAlmostEqual(rows["forecast_carry"].iloc[-1], 6.0)
 
 
 if __name__ == "__main__":

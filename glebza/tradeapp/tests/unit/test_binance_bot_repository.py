@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock
-from repository.binance_bot_repository import BinanceBotRepository
+from glebza.tradeapp.legacy.repository.binance_bot_repository import BinanceBotRepository
 import datetime
 
 

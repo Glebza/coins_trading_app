@@ -1,11 +1,11 @@
 import logging
 import argparse
 
-from glebza.tradeapp.tests.backtest.test_strategies import StrategyBackTest
-from glebza.tradeapp.src.strategies.deviations import DeviationsStrategy
-from glebza.tradeapp.src.strategies.boll_macd_rsi import BollMacdRsiStrategy
-from glebza.tradeapp.tests.backtest.repository.backtest_launch_repository import BacktestLaunchRepository
-from glebza.tradeapp.tests.backtest.repository.strategy_repository import StrategyRepository
+from glebza.tradeapp.legacy.backtest.test_strategies import StrategyBackTest
+from glebza.tradeapp.legacy.strategies.deviations import DeviationsStrategy
+from glebza.tradeapp.legacy.strategies.boll_macd_rsi import BollMacdRsiStrategy
+from glebza.tradeapp.legacy.backtest.repository.backtest_launch_repository import BacktestLaunchRepository
+from glebza.tradeapp.legacy.backtest.repository.strategy_repository import StrategyRepository
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s %(message)s', level=logging.DEBUG)
 

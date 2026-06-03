@@ -1,13 +1,13 @@
 from unittest.mock import MagicMock
-import glebza.tradeapp.src.service.order_service as service
+import glebza.tradeapp.legacy.service.order_service as service
 import logging
 from datetime import datetime, timedelta, timezone
 from binance import Client
 import os
-from glebza.tradeapp.tests.backtest.repository.backtest_launch_repository import BacktestLaunchRepository
-from glebza.tradeapp.tests.backtest.repository.backtest_result_repository import BacktestResultRepository
-from glebza.tradeapp.tests.backtest.service.base_backtest_service import prepare_mock_order
-from glebza.tradeapp.tests.backtest.repository.backtest_repository import BacktestRepository
+from glebza.tradeapp.legacy.backtest.repository.backtest_launch_repository import BacktestLaunchRepository
+from glebza.tradeapp.legacy.backtest.repository.backtest_result_repository import BacktestResultRepository
+from glebza.tradeapp.legacy.backtest.service.base_backtest_service import prepare_mock_order
+from glebza.tradeapp.legacy.backtest.repository.backtest_repository import BacktestRepository
 
 CLOSE_PRICE_POSITION = 4
 HIGH_PRICE_POSITION = 2

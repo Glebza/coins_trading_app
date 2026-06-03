@@ -6,6 +6,10 @@ from collections.abc import Iterable, Mapping
 
 import pandas as pd
 
+from glebza.tradeapp.src.framework.forecasts.forecast_diversification import (
+    calculate_forecast_diversification_diagnostics,
+    correlation_to_dict,
+)
 from glebza.tradeapp.src.framework.forecasts.ewmac_forecast import (
     EWMACConfig,
     FORECAST_CAP,
@@ -58,10 +62,14 @@ def combine_forecast_series(
     forecasts: Mapping[str, pd.Series],
     weights: Mapping[str, float],
     cap: float = FORECAST_CAP,
+    *,
+    diversification_multiplier: float = 1.0,
 ) -> pd.Series:
     """Combine multiple forecast series with weights, then cap to Carver's range."""
     if not forecasts:
         raise ValueError("forecasts must not be empty")
+    if diversification_multiplier <= 0:
+        raise ValueError("diversification_multiplier must be positive")
 
     first = next(iter(forecasts.values()))
     total = pd.Series(0.0, index=first.index)
@@ -70,7 +78,29 @@ def combine_forecast_series(
         if forecast is not None:
             total = total.add(forecast * float(weight), fill_value=0.0)
 
-    return cap_forecast(total, floor=-cap, cap=cap)
+    return cap_forecast(total * diversification_multiplier, floor=-cap, cap=cap)
+
+
+def combine_ewmac_and_carry_forecast_series(
+    ewmac_forecast: pd.Series,
+    carry_forecast: pd.Series,
+    *,
+    ewmac_weight: float = 0.5,
+    carry_weight: float = 0.5,
+    cap: float = FORECAST_CAP,
+) -> pd.Series:
+    """Combine the EWMAC forecast group with the carry forecast."""
+    return combine_forecast_series(
+        {
+            "ewmac": ewmac_forecast,
+            "carry": carry_forecast,
+        },
+        {
+            "ewmac": ewmac_weight,
+            "carry": carry_weight,
+        },
+        cap=cap,
+    )
 
 
 def attach_ewmac_forecast_columns(
@@ -78,16 +108,35 @@ def attach_ewmac_forecast_columns(
     configs: Iterable[EWMACConfig] = DEFAULT_EWMAC_VARIATIONS,
     weights: Mapping[str, float] | None = None,
     cap: float = FORECAST_CAP,
+    *,
+    apply_fdm: bool = True,
 ) -> pd.DataFrame:
     """Add one column per EWMAC variation and a capped ``combined_forecast`` column."""
     rows = klines.copy()
     forecasts = ewmac_forecast_batch(rows, configs)
     resolved_weights = dict(weights or equal_weights(forecasts.keys()))
+    diagnostics = calculate_forecast_diversification_diagnostics(forecasts, resolved_weights)
+    multiplier = diagnostics.multiplier if apply_fdm else 1.0
 
     for name, series in forecasts.items():
         rows[f"forecast_{name}"] = series
 
-    rows["combined_forecast"] = combine_forecast_series(forecasts, resolved_weights, cap=cap)
+    rows["combined_forecast_before_fdm"] = combine_forecast_series(
+        forecasts,
+        resolved_weights,
+        cap=cap,
+        diversification_multiplier=1.0,
+    )
+    rows["combined_forecast_fdm"] = multiplier
+    rows["combined_forecast"] = combine_forecast_series(
+        forecasts,
+        resolved_weights,
+        cap=cap,
+        diversification_multiplier=multiplier,
+    )
+    rows.attrs["forecast_diversification_multiplier"] = multiplier
+    rows.attrs["forecast_average_correlation"] = diagnostics.average_correlation
+    rows.attrs["forecast_correlations"] = correlation_to_dict(diagnostics.correlation)
     return rows
 
 

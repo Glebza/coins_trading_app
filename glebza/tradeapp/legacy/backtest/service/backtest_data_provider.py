@@ -1,5 +1,5 @@
 from glebza.tradeapp.src.repository.history_repository import HistoryRepository
-import glebza.tradeapp.src.service.market_service as market_service
+import glebza.tradeapp.legacy.service.market_service as market_service
 from datetime import datetime, timedelta
 from binance import Client
 import os

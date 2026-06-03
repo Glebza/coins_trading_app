@@ -48,7 +48,7 @@ def target_position_units_from_postgres(ticker: str, session) -> float:
 rows = combined_forecast.attach_ewmac_forecast_columns(rows)
 position = sizing.cap_position_units(...)
 
-# ❌ BAD — forecast module imports TInvestInstrumentsService
+# ❌ BAD — forecast module imports InstrumentsService
 ```
 
 ## When adding features

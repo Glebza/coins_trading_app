@@ -32,3 +32,16 @@ def estimate_daily_price_volatility(
     return volatility
 
 
+def estimate_annualized_return_volatility(
+    close_price: pd.Series,
+    *,
+    periods_per_year: int = 252,
+    span: int = 32,
+    min_periods: int = 2,
+) -> pd.Series:
+    """Estimate annualized percentage-return volatility."""
+    close = pd.to_numeric(close_price).astype("float64")
+    returns = close.pct_change()
+    return returns.ewm(span=span, min_periods=min_periods).std() * sqrt(periods_per_year)
+
+

@@ -5,9 +5,9 @@ import sys
 import time
 import websocket
 
-import service.market_service as market_service
-import service.order_service as service
-from strategies.boll_macd_rsi import BollMacdRsiStrategy
+from glebza.tradeapp.legacy.service import market_service
+from glebza.tradeapp.legacy.service import order_service as service
+from glebza.tradeapp.legacy.strategies.boll_macd_rsi import BollMacdRsiStrategy
 from exchanges.exchange import Exchange
 
 CLOSE_INTERVAL = 'T'

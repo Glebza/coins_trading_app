@@ -1,0 +1,1392 @@
+databaseChangeLog:
+  - changeSet:
+      id: 14
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: exchange
+      changes:
+        - createTable:
+            tableName: exchange
+            schemaName: backtests
+            remarks: Broker tariff row (isolated copy for simulation)
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: code
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(128)
+              - column:
+                  name: currency
+                  type: varchar(10)
+              - column:
+                  name: tariff_name
+                  type: varchar(64)
+              - column:
+                  name: brokerage_rate_spot
+                  type: numeric(12, 8)
+              - column:
+                  name: brokerage_min_fee_spot
+                  type: numeric(12, 2)
+              - column:
+                  name: brokerage_rate_futures
+                  type: numeric(12, 8)
+              - column:
+                  name: brokerage_rate_futures_alt
+                  type: numeric(12, 8)
+              - column:
+                  name: brokerage_min_fee_futures
+                  type: numeric(12, 2)
+              - column:
+                  name: exchange_fee_rate_spot
+                  type: numeric(12, 8)
+              - column:
+                  name: exchange_fee_rate_futures
+                  type: numeric(12, 8)
+              - column:
+                  name: monthly_fee
+                  type: numeric(12, 2)
+              - column:
+                  name: effective_from
+                  type: date
+              - column:
+                  name: notes
+                  type: text
+        - addUniqueConstraint:
+            constraintName: uk_backtests_exchange_code
+            schemaName: backtests
+            tableName: exchange
+            columnNames: code
+
+  - changeSet:
+      id: 15
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: portfolio
+      changes:
+        - createTable:
+            tableName: portfolio
+            schemaName: backtests
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+
+  - changeSet:
+      id: 16
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: portfolio_instruments
+      changes:
+        - createTable:
+            tableName: portfolio_instruments
+            schemaName: backtests
+            columns:
+              - column:
+                  name: portfolio_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weight
+                  type: numeric(10, 6)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: block_value
+                  type: numeric(12, 4)
+                  defaultValueNumeric: 1.0
+              - column:
+                  name: lot_size
+                  type: integer
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: portfolio_instruments
+            baseColumnNames: portfolio_id
+            referencedTableSchemaName: backtests
+            referencedTableName: portfolio
+            referencedColumnNames: id
+            constraintName: fk_backtests_portfolio_instruments_portfolio
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: portfolio_instruments
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: backtests
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_backtests_portfolio_instruments_instruments
+            onDelete: CASCADE
+        - addPrimaryKey:
+            schemaName: backtests
+            tableName: portfolio_instruments
+            columnNames: portfolio_id, instrument_id
+            constraintName: pk_backtests_portfolio_instruments
+
+  - changeSet:
+      id: 17
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      comment: carver_strategy — legacy backtests.strategy (BUY/SELL/WAIT) remains frozen
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: carver_strategy
+      changes:
+        - createTable:
+            tableName: carver_strategy
+            schemaName: backtests
+            remarks: Carver TradingAccount defaults for simulation
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: exchange_id
+                  type: integer
+              - column:
+                  name: initial_trading_capital
+                  type: numeric(20, 2)
+              - column:
+                  name: annualized_volatility_target
+                  type: numeric(10, 6)
+              - column:
+                  name: max_capital_multiple
+                  type: numeric(10, 4)
+              - column:
+                  name: position_inertia
+                  type: numeric(10, 6)
+              - column:
+                  name: trailing_stop_multiplier
+                  type: numeric(10, 4)
+              - column:
+                  name: compounding
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: slippage_rate
+                  type: numeric(10, 6)
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: carver_strategy
+            baseColumnNames: exchange_id
+            referencedTableSchemaName: backtests
+            referencedTableName: exchange
+            referencedColumnNames: id
+            constraintName: fk_backtests_carver_strategy_exchange
+
+  - changeSet:
+      id: 18
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: strategy_portfolio
+      changes:
+        - createTable:
+            tableName: strategy_portfolio
+            schemaName: backtests
+            columns:
+              - column:
+                  name: strategy_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: portfolio_id
+                  type: integer
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: strategy_portfolio
+            baseColumnNames: strategy_id
+            referencedTableSchemaName: backtests
+            referencedTableName: carver_strategy
+            referencedColumnNames: id
+            constraintName: fk_backtests_strategy_portfolio_strategy
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: strategy_portfolio
+            baseColumnNames: portfolio_id
+            referencedTableSchemaName: backtests
+            referencedTableName: portfolio
+            referencedColumnNames: id
+            constraintName: fk_backtests_strategy_portfolio_portfolio
+            onDelete: CASCADE
+        - addPrimaryKey:
+            schemaName: backtests
+            tableName: strategy_portfolio
+            columnNames: strategy_id, portfolio_id
+            constraintName: pk_backtests_strategy_portfolio
+
+  - changeSet:
+      id: 19
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: rules
+      changes:
+        - createTable:
+            tableName: rules
+            schemaName: backtests
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: code
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(128)
+              - column:
+                  name: description
+                  type: text
+        - addUniqueConstraint:
+            constraintName: uk_backtests_rules_code
+            schemaName: backtests
+            tableName: rules
+            columnNames: code
+
+  - changeSet:
+      id: 20
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: rule_variations
+      changes:
+        - createTable:
+            tableName: rule_variations
+            schemaName: backtests
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: rule_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: params
+                  type: jsonb
+                  constraints:
+                    nullable: false
+              - column:
+                  name: params_hash
+                  type: varchar(64)
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: rule_variations
+            baseColumnNames: rule_id
+            referencedTableSchemaName: backtests
+            referencedTableName: rules
+            referencedColumnNames: id
+            constraintName: fk_backtests_rule_variations_rules
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 21
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: strategy_rules
+      changes:
+        - createTable:
+            tableName: strategy_rules
+            schemaName: backtests
+            columns:
+              - column:
+                  name: strategy_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rule_variation_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weight
+                  type: numeric(10, 6)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rule_group
+                  type: varchar(32)
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: strategy_rules
+            baseColumnNames: strategy_id
+            referencedTableSchemaName: backtests
+            referencedTableName: carver_strategy
+            referencedColumnNames: id
+            constraintName: fk_backtests_strategy_rules_strategy
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: strategy_rules
+            baseColumnNames: rule_variation_id
+            referencedTableSchemaName: backtests
+            referencedTableName: rule_variations
+            referencedColumnNames: id
+            constraintName: fk_backtests_strategy_rules_rule_variations
+            onDelete: CASCADE
+        - addPrimaryKey:
+            schemaName: backtests
+            tableName: strategy_rules
+            columnNames: strategy_id, rule_variation_id
+            constraintName: pk_backtests_strategy_rules
+
+  - changeSet:
+      id: 22
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: instrument_forecasts
+      changes:
+        - createTable:
+            tableName: instrument_forecasts
+            schemaName: backtests
+            remarks: Forecast per bar; as_of = candle open time (k_interval)
+            columns:
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rule_variation_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: kline_interval
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: as_of
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: forecast_value
+                  type: numeric(10, 4)
+              - column:
+                  name: combined_forecast
+                  type: numeric(10, 4)
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: instrument_forecasts
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: backtests
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_backtests_instrument_forecasts_instruments
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: instrument_forecasts
+            baseColumnNames: rule_variation_id
+            referencedTableSchemaName: backtests
+            referencedTableName: rule_variations
+            referencedColumnNames: id
+            constraintName: fk_backtests_instrument_forecasts_rule_variations
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            constraintName: uk_backtests_instrument_forecasts_grain
+            schemaName: backtests
+            tableName: instrument_forecasts
+            columnNames: instrument_id, rule_variation_id, kline_interval, as_of
+
+  - changeSet:
+      id: 23
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      comment: carver_order/carver_deals — legacy backtests.order and backtests.deals stay unchanged
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: carver_order
+      changes:
+        - createTable:
+            tableName: carver_order
+            schemaName: backtests
+            remarks: Carver simulated order per bar
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: strategy_id
+                  type: integer
+              - column:
+                  name: backtest_run_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: order_dt
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price
+                  type: numeric(20, 8)
+              - column:
+                  name: quantity
+                  type: numeric(20, 8)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: side
+                  type: varchar(8)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+        - createTable:
+            tableName: carver_deals
+            schemaName: backtests
+            remarks: Carver round-trip in simulation
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: buy_order_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sell_order_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: backtest_run_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_dt
+                  type: timestamp
+              - column:
+                  name: end_dt
+                  type: timestamp
+
+  - changeSet:
+      id: 24
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: backtest_runs
+      changes:
+        - createTable:
+            tableName: backtest_runs
+            schemaName: backtests
+            remarks: One Carver simulation run with frozen fee/config snapshot
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: strategy_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: portfolio_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: exchange_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: kline_interval
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_dt
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_dt
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: initial_trading_capital
+                  type: numeric(20, 2)
+              - column:
+                  name: annualized_volatility_target
+                  type: numeric(10, 6)
+              - column:
+                  name: compounding
+                  type: boolean
+              - column:
+                  name: brokerage_rate_spot
+                  type: numeric(12, 8)
+              - column:
+                  name: brokerage_rate_futures
+                  type: numeric(12, 8)
+              - column:
+                  name: slippage_rate
+                  type: numeric(10, 6)
+              - column:
+                  name: status
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_message
+                  type: text
+              - column:
+                  name: total_return
+                  type: numeric(12, 8)
+              - column:
+                  name: annualized_return
+                  type: numeric(12, 8)
+              - column:
+                  name: annualized_volatility
+                  type: numeric(12, 8)
+              - column:
+                  name: sharpe
+                  type: numeric(12, 6)
+              - column:
+                  name: max_drawdown
+                  type: numeric(12, 8)
+              - column:
+                  name: periods_per_year
+                  type: integer
+              - column:
+                  name: started_at
+                  type: timestamp
+              - column:
+                  name: finished_at
+                  type: timestamp
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: backtest_runs
+            baseColumnNames: strategy_id
+            referencedTableSchemaName: backtests
+            referencedTableName: carver_strategy
+            referencedColumnNames: id
+            constraintName: fk_backtests_backtest_runs_strategy
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: backtest_runs
+            baseColumnNames: portfolio_id
+            referencedTableSchemaName: backtests
+            referencedTableName: portfolio
+            referencedColumnNames: id
+            constraintName: fk_backtests_backtest_runs_portfolio
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: backtest_runs
+            baseColumnNames: exchange_id
+            referencedTableSchemaName: backtests
+            referencedTableName: exchange
+            referencedColumnNames: id
+            constraintName: fk_backtests_backtest_runs_exchange
+
+  - changeSet:
+      id: 25
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: backtest_run_instruments
+      changes:
+        - createTable:
+            tableName: backtest_run_instruments
+            schemaName: backtests
+            remarks: Per-sleeve metrics for a Carver run
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: backtest_run_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ticker
+                  type: varchar(50)
+              - column:
+                  name: total_return
+                  type: numeric(12, 8)
+              - column:
+                  name: sharpe
+                  type: numeric(12, 6)
+              - column:
+                  name: max_drawdown
+                  type: numeric(12, 8)
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: backtest_run_instruments
+            baseColumnNames: backtest_run_id
+            referencedTableSchemaName: backtests
+            referencedTableName: backtest_runs
+            referencedColumnNames: id
+            constraintName: fk_backtests_backtest_run_instruments_run
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: backtest_run_instruments
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: backtests
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_backtests_backtest_run_instruments_instruments
+
+  - changeSet:
+      id: 26
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      comment: FKs to backtest_runs and carver_strategy — after backtest_runs exists
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            schemaName: backtests
+            tableName: carver_order
+        - tableExists:
+            schemaName: backtests
+            tableName: backtest_runs
+        - not:
+            foreignKeyConstraintExists:
+              foreignKeyName: fk_backtests_carver_order_run
+      changes:
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: carver_order
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: backtests
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_backtests_carver_order_instruments
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: carver_order
+            baseColumnNames: strategy_id
+            referencedTableSchemaName: backtests
+            referencedTableName: carver_strategy
+            referencedColumnNames: id
+            constraintName: fk_backtests_carver_order_strategy
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: carver_order
+            baseColumnNames: backtest_run_id
+            referencedTableSchemaName: backtests
+            referencedTableName: backtest_runs
+            referencedColumnNames: id
+            constraintName: fk_backtests_carver_order_run
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: carver_deals
+            baseColumnNames: buy_order_id
+            referencedTableSchemaName: backtests
+            referencedTableName: carver_order
+            referencedColumnNames: id
+            constraintName: fk_backtests_carver_deals_buy_order
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: carver_deals
+            baseColumnNames: sell_order_id
+            referencedTableSchemaName: backtests
+            referencedTableName: carver_order
+            referencedColumnNames: id
+            constraintName: fk_backtests_carver_deals_sell_order
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: carver_deals
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: backtests
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_backtests_carver_deals_instruments
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: carver_deals
+            baseColumnNames: backtest_run_id
+            referencedTableSchemaName: backtests
+            referencedTableName: backtest_runs
+            referencedColumnNames: id
+            constraintName: fk_backtests_carver_deals_run
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 27
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-seed
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM backtests.exchange WHERE code = 'tinvest'
+      changes:
+        - insert:
+            schemaName: backtests
+            tableName: exchange
+            columns:
+              - column:
+                  name: code
+                  value: tinvest
+              - column:
+                  name: name
+                  value: T-Invest MOEX
+              - column:
+                  name: currency
+                  value: RUB
+              - column:
+                  name: tariff_name
+                  value: Trader
+              - column:
+                  name: brokerage_rate_spot
+                  valueNumeric: 0.0005
+              - column:
+                  name: brokerage_rate_futures
+                  valueNumeric: 0.0004
+              - column:
+                  name: monthly_fee
+                  valueNumeric: 390
+              - column:
+                  name: effective_from
+                  valueDate: 2024-01-01
+
+  - changeSet:
+      id: 28
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-seed
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM backtests.rules WHERE code = 'ewmac'
+      changes:
+        - insert:
+            schemaName: backtests
+            tableName: rules
+            columns:
+              - column:
+                  name: code
+                  value: ewmac
+              - column:
+                  name: name
+                  value: EWMAC
+              - column:
+                  name: description
+                  value: Exponentially weighted moving average crossover forecast rule
+        - sql:
+            sql: |
+              INSERT INTO backtests.rule_variations (rule_id, name, params)
+              SELECT r.id, v.name, v.params::jsonb
+              FROM backtests.rules r
+              CROSS JOIN (VALUES
+                ('ewmac_4_16', '{"fast_span":4,"slow_span":16,"forecast_scalar":10}'),
+                ('ewmac_8_32', '{"fast_span":8,"slow_span":32,"forecast_scalar":10}'),
+                ('ewmac_16_64', '{"fast_span":16,"slow_span":64,"forecast_scalar":10}'),
+                ('ewmac_32_128', '{"fast_span":32,"slow_span":128,"forecast_scalar":10}'),
+                ('ewmac_64_256', '{"fast_span":64,"slow_span":256,"forecast_scalar":10}')
+              ) AS v(name, params)
+              WHERE r.code = 'ewmac'
+              AND NOT EXISTS (
+                SELECT 1 FROM backtests.rule_variations rv
+                WHERE rv.rule_id = r.id AND rv.name = v.name
+              );
+            splitStatements: false
+
+  - changeSet:
+      id: 29
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      validCheckSum:
+        - 9:dbe60706180ca08ff331bb5f278acc64
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            columnExists:
+              schemaName: backtests
+              tableName: exchange
+              columnName: max_capital_multiple
+      changes:
+        - addColumn:
+            schemaName: backtests
+            tableName: exchange
+            columns:
+              - column:
+                  name: max_capital_multiple
+                  type: numeric(10, 4)
+                  constraints:
+                    nullable: false
+                  remarks: Max abs(position notional) as a multiple of capital at risk
+
+  - changeSet:
+      id: 30
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            schemaName: backtests
+            tableName: backtest_runs
+            columnName: compounding
+      changes:
+        - dropColumn:
+            schemaName: backtests
+            tableName: backtest_runs
+            columnName: compounding
+
+  - changeSet:
+      id: 31
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      changes:
+        - modifyDataType:
+            schemaName: backtests
+            tableName: portfolio
+            columnName: name
+            newDataType: varchar(500)
+
+  - changeSet:
+      id: 32
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      comment: compounding is always on in the engine; column is redundant
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            schemaName: backtests
+            tableName: carver_strategy
+            columnName: compounding
+      changes:
+        - dropColumn:
+            schemaName: backtests
+            tableName: carver_strategy
+            columnName: compounding
+
+  - changeSet:
+      id: 33
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      comment: Dividend events from T-Invest for equity carry forecasts
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: instrument_dividends
+      changes:
+        - createTable:
+            schemaName: backtests
+            tableName: instrument_dividends
+            remarks: Dividend events per instrument; dates are used with declared/created timestamps to avoid lookahead bias
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dividend_net
+                  type: numeric(20, 10)
+                  constraints:
+                    nullable: false
+                  remarks: Dividend per one share, including currency, from T-Invest dividend_net
+              - column:
+                  name: dividend_currency
+                  type: varchar(10)
+              - column:
+                  name: payment_date
+                  type: timestamp
+              - column:
+                  name: declared_date
+                  type: timestamp
+              - column:
+                  name: last_buy_date
+                  type: timestamp
+              - column:
+                  name: dividend_type
+                  type: varchar(80)
+              - column:
+                  name: record_date
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: regularity
+                  type: varchar(80)
+              - column:
+                  name: close_price
+                  type: numeric(20, 10)
+              - column:
+                  name: close_price_currency
+                  type: varchar(10)
+              - column:
+                  name: yield_value
+                  type: numeric(12, 8)
+                  remarks: T-Invest dividend yield value for the event
+              - column:
+                  name: api_created_at
+                  type: timestamp
+                  remarks: T-Invest timestamp when the dividend event was created
+              - column:
+                  name: loaded_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: instrument_dividends
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: backtests
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_backtests_instrument_dividends_instruments
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            constraintName: uk_backtests_instrument_dividends_record
+            schemaName: backtests
+            tableName: instrument_dividends
+            columnNames: instrument_id, record_date
+        - createIndex:
+            schemaName: backtests
+            tableName: instrument_dividends
+            indexName: idx_backtests_instrument_dividends_lookup
+            columns:
+              - column:
+                  name: instrument_id
+              - column:
+                  name: declared_date
+              - column:
+                  name: record_date
+
+  - changeSet:
+      id: 34
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      comment: Funding rate time series for carry forecasts, initially RUONIA from Bank of Russia
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: funding_rates
+      changes:
+        - createTable:
+            schemaName: backtests
+            tableName: funding_rates
+            remarks: Annual funding rates as decimal fractions, e.g. 0.1407 for 14.07 percent p.a.
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: rate_code
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+                  remarks: Example RUONIA
+              - column:
+                  name: rate_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: annual_rate
+                  type: numeric(12, 8)
+                  constraints:
+                    nullable: false
+                  remarks: Decimal fraction, not percent
+              - column:
+                  name: source
+                  type: varchar(40)
+                  defaultValue: cbr
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(80)
+                  remarks: Calculation status from source, if available
+              - column:
+                  name: published_at
+                  type: timestamp
+                  remarks: Publication timestamp/date from source, used to avoid lookahead bias
+              - column:
+                  name: loaded_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            constraintName: uk_backtests_funding_rates_grain
+            schemaName: backtests
+            tableName: funding_rates
+            columnNames: rate_code, rate_date, source
+        - createIndex:
+            schemaName: backtests
+            tableName: funding_rates
+            indexName: idx_backtests_funding_rates_lookup
+            columns:
+              - column:
+                  name: rate_code
+              - column:
+                  name: published_at
+              - column:
+                  name: rate_date
+
+  - changeSet:
+      id: 35
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      comment: Persist OOS/FDM/CAGR run-level metadata added by the framework backtest
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            columnExists:
+              schemaName: backtests
+              tableName: backtest_runs
+              columnName: backtest_mode
+      changes:
+        - addColumn:
+            schemaName: backtests
+            tableName: backtest_runs
+            columns:
+              - column:
+                  name: backtest_mode
+                  type: varchar(40)
+                  defaultValue: in_sample
+                  remarks: in_sample or expanding_oos
+                  constraints:
+                    nullable: false
+              - column:
+                  name: step_months
+                  type: integer
+                  remarks: OOS calendar step in months, e.g. 12 for 1y
+              - column:
+                  name: cagr
+                  type: numeric(12, 8)
+                  remarks: Compound annual growth rate for the run
+              - column:
+                  name: forecast_diversification_multiplier
+                  type: numeric(12, 8)
+                  remarks: Average FDM used by final combined forecasts
+              - column:
+                  name: forecast_average_correlation
+                  type: numeric(12, 8)
+                  remarks: Average off-diagonal forecast correlation
+              - column:
+                  name: forecast_correlations
+                  type: jsonb
+                  remarks: Forecast correlation matrix used for FDM diagnostics
+
+  - changeSet:
+      id: 36
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      comment: Per-stage expanding OOS summaries with frozen FDM diagnostics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: backtests
+              tableName: backtest_run_oos_stages
+      changes:
+        - createTable:
+            schemaName: backtests
+            tableName: backtest_run_oos_stages
+            remarks: One row per expanding out-of-sample test stage
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: backtest_run_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stage_number
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: train_start_dt
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: train_end_dt
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: test_start_dt
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: test_end_dt
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rows_count
+                  type: integer
+              - column:
+                  name: total_return
+                  type: numeric(12, 8)
+              - column:
+                  name: cagr
+                  type: numeric(12, 8)
+              - column:
+                  name: annualized_return
+                  type: numeric(12, 8)
+              - column:
+                  name: annualized_volatility
+                  type: numeric(12, 8)
+              - column:
+                  name: sharpe
+                  type: numeric(12, 6)
+              - column:
+                  name: max_drawdown
+                  type: numeric(12, 8)
+              - column:
+                  name: forecast_diversification_multiplier
+                  type: numeric(12, 8)
+              - column:
+                  name: forecast_average_correlation
+                  type: numeric(12, 8)
+              - column:
+                  name: forecast_correlations
+                  type: jsonb
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableSchemaName: backtests
+            baseTableName: backtest_run_oos_stages
+            baseColumnNames: backtest_run_id
+            referencedTableSchemaName: backtests
+            referencedTableName: backtest_runs
+            referencedColumnNames: id
+            constraintName: fk_backtests_oos_stages_run
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            constraintName: uk_backtests_oos_stages_run_stage
+            schemaName: backtests
+            tableName: backtest_run_oos_stages
+            columnNames: backtest_run_id, stage_number
+        - createIndex:
+            schemaName: backtests
+            tableName: backtest_run_oos_stages
+            indexName: idx_backtests_oos_stages_run
+            columns:
+              - column:
+                  name: backtest_run_id
+              - column:
+                  name: stage_number
+
+  - changeSet:
+      id: 37
+      author: gleb.skalatsky
+      context: backtest
+      labels: carver-backtests
+      comment: Persist per-instrument CAGR and final forecast diversification diagnostics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            columnExists:
+              schemaName: backtests
+              tableName: backtest_run_instruments
+              columnName: cagr
+      changes:
+        - addColumn:
+            schemaName: backtests
+            tableName: backtest_run_instruments
+            columns:
+              - column:
+                  name: cagr
+                  type: numeric(12, 8)
+              - column:
+                  name: forecast_diversification_multiplier
+                  type: numeric(12, 8)
+              - column:
+                  name: forecast_average_correlation
+                  type: numeric(12, 8)
+              - column:
+                  name: forecast_correlations
+                  type: jsonb

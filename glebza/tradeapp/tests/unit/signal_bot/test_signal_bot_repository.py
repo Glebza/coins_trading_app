@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 from unittest.mock import Mock
 import unittest, os, psycopg2, logging
 from datetime import timedelta, datetime
-from repository.signal_bot_repository import SignalBotRepository
+from glebza.tradeapp.legacy.repository.signal_bot_repository import SignalBotRepository
 
 OPEN_INTEREST = 99
 

@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import numpy
 from talib import MA_Type
 
-import glebza.tradeapp.src.strategies.boll_macd_rsi as strategy
-import glebza.tradeapp.src.service.order_service as service
+import glebza.tradeapp.legacy.strategies.boll_macd_rsi as strategy
+import glebza.tradeapp.legacy.service.order_service as service
 import logging
 import csv
 from datetime import datetime, timedelta
@@ -15,7 +15,7 @@ from decimal import *
 
 import talib
 
-from glebza.tradeapp.tests.backtest.repository.backtest_repository import BacktestRepository
+from glebza.tradeapp.legacy.backtest.repository.backtest_repository import BacktestRepository
 from glebza.tradeapp.src.repository.history_repository import HistoryRepository
 
 CLOSE_PRICE_POSITION = 4

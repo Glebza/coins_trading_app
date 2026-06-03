@@ -9,6 +9,10 @@ from glebza.tradeapp.src.framework.backtest import (
     BacktestResult,
     run_single_instrument_backtest,
 )
+from glebza.tradeapp.src.framework.backtest.engine import (
+    _run_compounding_backtest_rows,
+    calculate_single_instrument_forecast_diversification,
+)
 from glebza.tradeapp.src.framework.sizing import apply_position_inertia, cap_position_to_max_notional
 
 
@@ -40,6 +44,7 @@ class TestFrameworkBacktest(unittest.TestCase):
                 "forecast_ewmac_16_64",
                 "forecast_ewmac_64_256",
                 "price_volatility",
+                "annualized_return_volatility",
                 "target_position",
                 "position",
                 "trade",
@@ -51,6 +56,57 @@ class TestFrameworkBacktest(unittest.TestCase):
                 "capital_at_risk",
             }.issubset(result.rows.columns)
         )
+
+    def test_single_instrument_backtest_adds_carry_when_funding_rates_exist(self):
+        klines = klines_dataframe([100 + i + (0.5 if i % 2 else 0.0) for i in range(300)])
+        dividends = [
+            {
+                "record_date": datetime(2024, 2, 1, tzinfo=timezone.utc),
+                "dividend_net": 10.0,
+                "declared_date": datetime(2024, 2, 1, tzinfo=timezone.utc),
+            }
+        ]
+        funding_rates = [
+            {
+                "rate_date": datetime(2023, 12, 31, tzinfo=timezone.utc),
+                "annual_rate": 0.05,
+                "published_at": datetime(2024, 1, 1, tzinfo=timezone.utc),
+            }
+        ]
+
+        rows = run_single_instrument_backtest(
+            klines,
+            dividends=dividends,
+            funding_rates=funding_rates,
+        ).rows
+
+        self.assertIn("forecast_carry", rows.columns)
+        self.assertIn("combined_ewmac_forecast", rows.columns)
+
+    def test_single_instrument_backtest_keeps_ewmac_when_carry_inputs_are_absent(self):
+        klines = klines_dataframe([100 + i + (0.5 if i % 2 else 0.0) for i in range(300)])
+
+        base_rows = run_single_instrument_backtest(klines).rows
+        rows = run_single_instrument_backtest(klines, dividends=[], funding_rates=[]).rows
+
+        self.assertNotIn("forecast_carry", rows.columns)
+        pd.testing.assert_series_equal(
+            rows["combined_forecast"],
+            base_rows["combined_forecast"],
+            check_names=False,
+        )
+
+    def test_single_instrument_backtest_can_use_frozen_fdm(self):
+        train_klines = klines_dataframe([100 + i + (0.5 if i % 2 else 0.0) for i in range(300)])
+        test_klines = klines_dataframe([120 + i + (0.5 if i % 2 else 0.0) for i in range(120)])
+
+        diagnostics = calculate_single_instrument_forecast_diversification(train_klines)
+        rows = run_single_instrument_backtest(
+            test_klines,
+            forecast_diversification_diagnostics=diagnostics,
+        ).rows
+
+        self.assertAlmostEqual(rows["combined_forecast_fdm"].iloc[0], diagnostics.multiplier)
 
     def test_strategy_return_uses_previous_position(self):
         klines = klines_dataframe([100 + i + (0.5 if i % 2 else 0.0) for i in range(300)])
@@ -70,10 +126,10 @@ class TestFrameworkBacktest(unittest.TestCase):
         quarter_account = full_account.allocate_capital(0.25)
 
         full_position = run_single_instrument_backtest(
-            klines, account=full_account, compound_capital_at_risk=False
+            klines, account=full_account
         ).rows["position"].abs().iloc[-1]
         quarter_position = run_single_instrument_backtest(
-            klines, account=quarter_account, compound_capital_at_risk=False
+            klines, account=quarter_account
         ).rows["position"].abs().iloc[-1]
 
         self.assertAlmostEqual(quarter_position, full_position * 0.25, delta=1.0)
@@ -88,10 +144,10 @@ class TestFrameworkBacktest(unittest.TestCase):
         )
 
         low_risk_position = run_single_instrument_backtest(
-            klines, account=low_risk, compound_capital_at_risk=False
+            klines, account=low_risk
         ).rows["position"].abs().iloc[-1]
         high_risk_position = run_single_instrument_backtest(
-            klines, account=high_risk, compound_capital_at_risk=False
+            klines, account=high_risk
         ).rows["position"].abs().iloc[-1]
 
         self.assertAlmostEqual(high_risk_position, low_risk_position * 2.0, delta=1.0)
@@ -128,6 +184,35 @@ class TestFrameworkBacktest(unittest.TestCase):
         tolerance = float(rows["close_price"].max()) * lot_size
         self.assertTrue((notionals <= max_notionals + tolerance).all())
 
+    def test_non_shortable_instrument_can_close_but_not_short(self):
+        rows = pd.DataFrame(
+            {
+                "close_price": [100.0, 99.0, 101.0, 102.0],
+                "combined_forecast": [-20.0, -20.0, 20.0, 20.0],
+                "price_volatility": [1.0, 1.0, 1.0, 1.0],
+            }
+        )
+        account = TradingAccount(
+            trading_capital=100_000.0,
+            annualized_volatility_target=0.20,
+            max_capital_multiple=100.0,
+        )
+
+        result_rows = _run_compounding_backtest_rows(
+            rows,
+            account,
+            periods_per_year=252,
+            block_value=1.0,
+            lot_size=1,
+            short_enabled=False,
+            position_inertia=0.0,
+            trailing_stop_multiplier=0.0,
+        )
+
+        self.assertEqual(result_rows["position"].iloc[:2].tolist(), [0.0, 0.0])
+        self.assertGreater(result_rows["position"].iloc[-1], 0.0)
+        self.assertTrue((result_rows["position"] >= 0.0).all())
+
     def test_capital_at_risk_compounds_with_equity(self):
         klines = klines_dataframe([100.0, 90.0, 80.0, 70.0, 60.0, 50.0])
         account = TradingAccount(trading_capital=100_000.0, annualized_volatility_target=0.20, max_capital_multiple=100.0)
@@ -136,7 +221,6 @@ class TestFrameworkBacktest(unittest.TestCase):
             klines,
             account=account,
             trailing_stop_multiplier=0.0,
-            compound_capital_at_risk=True,
         ).rows
 
         initial_capital = float(account.trading_capital)
@@ -185,6 +269,7 @@ class TestFrameworkBacktest(unittest.TestCase):
         result = run_single_instrument_backtest(klines)
 
         self.assertTrue(math.isfinite(result.total_return))
+        self.assertTrue(math.isfinite(result.cagr))
         self.assertTrue(math.isfinite(result.annualized_return))
         self.assertTrue(math.isfinite(result.annualized_volatility))
         self.assertTrue(math.isfinite(result.sharpe))

@@ -1,8 +1,7 @@
 """T‑Invest (T‑Bank) instruments: listed shares the API reports as tradable for your access.
 
 Imports assume ``tradeapp/src`` is on ``sys.path`` (sibling packages ``repository``, etc.).
-Run as: ``cd glebza/tradeapp/src && python -m exchanges.instrument_service``,
-or set ``PYTHONPATH`` to that ``src`` directory.
+Bulk share sync CLI: ``python -m manutil sync-shares`` (see ``manutil/instruments_cli.py``).
 """
 
 from __future__ import annotations
@@ -126,12 +125,3 @@ class TBankInstrumentService:
         return repo.upsert_shares_batch(shares, instruments_ticker_fn=instruments_ticker_fn)
 
 
-def main() -> None:
-    """Load tradeable shares into PostgreSQL."""
-    svc = TBankInstrumentService()
-    n = svc.persist_tradeable_shares_to_db()
-    print(f"persisted_shares={n}", flush=True)
-
-
-if __name__ == "__main__":
-    main()

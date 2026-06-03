@@ -1,6 +1,6 @@
 import logging
 from binance.enums import *
-from glebza.tradeapp.src.repository.binance_bot_repository import BinanceBotRepository
+from glebza.tradeapp.legacy.repository.binance_bot_repository import BinanceBotRepository
 
 repository = BinanceBotRepository()
 

@@ -2,7 +2,7 @@ from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy import create_engine
 import os
 
-from glebza.tradeapp.tests.backtest.repository.backtest_base_repository import Strategy, StrategyParameter
+from glebza.tradeapp.legacy.backtest.repository.backtest_base_repository import Strategy, StrategyParameter
 
 
 class StrategyRepository:

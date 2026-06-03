@@ -4,9 +4,9 @@ from unittest.mock import Mock
 
 from datetime import timedelta,datetime
 
-import adapters.telegram_adapter
-import service.signal_service as service
-from repository.signal_bot_repository import SignalBotRepository
+from glebza.tradeapp.legacy.adapters import telegram_adapter
+from glebza.tradeapp.legacy.service import signal_service as service
+from glebza.tradeapp.legacy.repository.signal_bot_repository import SignalBotRepository
 
 SYMBOl = 'BTCUSDT'
 
