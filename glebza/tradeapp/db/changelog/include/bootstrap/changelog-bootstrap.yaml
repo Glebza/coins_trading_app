@@ -1,0 +1,58 @@
+# Run once as a PostgreSQL superuser against the maintenance database (usually "postgres").
+# Password for the new role comes from property trader.password (see liquibase.secrets.properties.example).
+# Example (from glebza/tradeapp/db):
+#   liquibase --defaultsFile=liquibase.bootstrap.properties --defaultsFile=liquibase.secrets.properties update
+#
+# Note: CREATE SCHEMA backtests in the backtest app DB is in
+# changelog/include/backtest/changelog-1.0.yaml (changeSet 0-backtests-schema), not here — this changelog
+# runs only against the postgres connection and cannot create schemas inside the backtest database.
+databaseChangeLog:
+  - changeSet:
+      id: bootstrap-001-create-role-trader
+      author: gleb.skalatsky
+      runInTransaction: false
+      dbms: postgresql
+      comment: Create application role trader; password from trader.password in secrets file
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE rolname = 'trader'
+      changes:
+        - sql:
+            sql: CREATE ROLE trader WITH LOGIN PASSWORD '${trader.password}'
+            splitStatements: false
+
+  - changeSet:
+      id: bootstrap-002-create-database-trade
+      author: gleb.skalatsky
+      runInTransaction: false
+      dbms: postgresql
+      validCheckSum: ANY
+      comment: |
+        Postgres folds unquoted identifiers to lower case, so the database is stored as 'traderdb'.
+        Both the precondition and the CREATE statement must use the lowercase name to keep idempotency.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM pg_catalog.pg_database WHERE datname = 'traderdb'
+      changes:
+        - sql:
+            sql: CREATE DATABASE traderdb OWNER trader
+            splitStatements: false
+
+  - changeSet:
+      id: bootstrap-003-create-database-backtest
+      author: gleb.skalatsky
+      runInTransaction: false
+      dbms: postgresql
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM pg_catalog.pg_database WHERE datname = 'backtest'
+      changes:
+        - sql:
+            sql: CREATE DATABASE backtest OWNER trader
+            splitStatements: false

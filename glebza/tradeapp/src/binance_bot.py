@@ -1,31 +1,30 @@
-from datetime import datetime, timedelta
-import json, os
-import websocket
-from binance import Client
-from binance.enums import *
-import service.order_service as service
-import strategies.boll_macd_rsi as strategy
-import service.market_service as market_service
+import json
 import logging
-import time
+import os
 import sys
-from decimal import *
+import time
+import websocket
+
+from glebza.tradeapp.legacy.service import market_service
+from glebza.tradeapp.legacy.service import order_service as service
+from glebza.tradeapp.legacy.strategies.boll_macd_rsi import BollMacdRsiStrategy
+from exchanges.exchange import Exchange
 
 CLOSE_INTERVAL = 'T'
 
 IS_CANDLE_CLOSE = 'x'
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s %(message)s', level=logging.DEBUG)
-
+EXCHANGE_NAME = 0
 API_KEY = os.environ['API_KEY']
 API_SECRET = os.environ['API_SECRET']
 SYMBOL = 'BTCUSDT'
 ACTION_BUY = 'BUY'
 ACTION_SELL = 'SELL'
 
-START_CASH = 700
+START_CASH = 1000
 
-client = Client(API_KEY, API_SECRET)
+client = Exchange(API_KEY, API_SECRET, sys.argv[EXCHANGE_NAME]).get_client()
 
 sell_order = None
 buy_order = service.get_open_deal_order(SYMBOL)
@@ -39,25 +38,28 @@ else:
 warm_data = None
 
 if len(sys.argv) > 1:
-    warm_data = market_service.get_transformed_klines(client, SYMBOL, sys.argv[0], sys.argv[1])
+    warm_data = market_service.get_transformed_klines(client, SYMBOL, sys.argv[1], sys.argv[2])
 else:
     warm_data = market_service.get_transformed_klines(client, SYMBOL)
 
 close_prices = warm_data[0]
 high_prices = warm_data[2]
 low_prices = warm_data[3]
-strategy.prepare(warm_data)
+open_deal = None
 
 # start is required to initialise its internal loop
 # TODO   реализовать teardown
+
+
 def handle_socket_message(ws, msg):
     global buy_order
     global sell_order
     global SYMBOL
+    global open_deal
 
     st = time.time()
     candle = json.loads(msg)['k']
-    closed_price =float (candle['c'])
+    closed_price = float(candle['c'])
     high_price = float(candle['h'])
     low_price = float(candle['l'])
 
@@ -82,7 +84,7 @@ def handle_socket_message(ws, msg):
         close_prices.append(float(closed_price))
         high_prices.append(high_price)
         low_prices.append(low_price)
-        prices = closed_price,high_prices,low_prices
+        prices = closed_price, high_prices, low_prices
         logging.info("----")
         track = strategy.process(prices, candle[CLOSE_INTERVAL], buy_order)
 
@@ -90,10 +92,11 @@ def handle_socket_message(ws, msg):
             logging.info('sell!')
             sell_order = service.close_deal(client, SYMBOL, closed_price, buy_order)
             buy_order = None
+            open_deal = None
 
         if track['action'] == ACTION_BUY:
             qty = round(START_CASH / closed_price, 5)
-            buy_order = service.open_deal(client, SYMBOL, closed_price, qty)
+            open_deal = service.open_deal(client, SYMBOL, closed_price, qty)
             et = time.time()
             logging.info('Normal buy: Execution time:{} {}'.format(et - st, 'seconds'))
 

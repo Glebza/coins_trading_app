@@ -4,8 +4,8 @@ import datetime
 
 from binance import Client
 
-import service.order_service as service
-from repository.binance_bot_repository import BinanceBotRepository
+from glebza.tradeapp.legacy.service import order_service as service
+from glebza.tradeapp.legacy.repository.binance_bot_repository import BinanceBotRepository
 
 SYMBOl = 'BTCUSDT'
 

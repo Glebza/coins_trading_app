@@ -1,0 +1,1 @@
+"""Trading decision logic."""

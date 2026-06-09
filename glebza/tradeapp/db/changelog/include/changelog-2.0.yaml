@@ -1,0 +1,832 @@
+databaseChangeLog:
+  - changeSet:
+      id: 11
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: public
+              tableName: kline_1d
+      changes:
+        - createTable:
+            tableName: kline_1d
+            schemaName: public
+            remarks: Daily OHLCV for Carver backtest and live
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticker_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: open_price
+                  type: decimal
+              - column:
+                  name: high_price
+                  type: decimal
+              - column:
+                  name: low_price
+                  type: decimal
+              - column:
+                  name: close_price
+                  type: decimal
+              - column:
+                  name: volume
+                  type: numeric
+              - column:
+                  name: k_interval
+                  type: timestamp
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: kline_1d
+            baseColumnNames: ticker_id
+            referencedTableSchemaName: public
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_kline_1d_ticker_instruments
+        - createIndex:
+            tableName: kline_1d
+            schemaName: public
+            indexName: uk_kline_1d_ticker_interval
+            unique: true
+            columns:
+              - column:
+                  name: ticker_id
+              - column:
+                  name: k_interval
+
+  - changeSet:
+      id: 12
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: public
+              tableName: exchange
+      changes:
+        - createTable:
+            tableName: exchange
+            schemaName: public
+            remarks: Broker tariff row (T-Invest rates from invest-tariff-fees.pdf)
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: code
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(128)
+              - column:
+                  name: currency
+                  type: varchar(10)
+              - column:
+                  name: tariff_name
+                  type: varchar(64)
+              - column:
+                  name: brokerage_rate_spot
+                  type: numeric(12, 8)
+              - column:
+                  name: brokerage_min_fee_spot
+                  type: numeric(12, 2)
+              - column:
+                  name: brokerage_rate_futures
+                  type: numeric(12, 8)
+              - column:
+                  name: brokerage_rate_futures_alt
+                  type: numeric(12, 8)
+              - column:
+                  name: brokerage_min_fee_futures
+                  type: numeric(12, 2)
+              - column:
+                  name: exchange_fee_rate_spot
+                  type: numeric(12, 8)
+              - column:
+                  name: exchange_fee_rate_futures
+                  type: numeric(12, 8)
+              - column:
+                  name: monthly_fee
+                  type: numeric(12, 2)
+              - column:
+                  name: effective_from
+                  type: date
+              - column:
+                  name: notes
+                  type: text
+        - addUniqueConstraint:
+            constraintName: uk_exchange_code
+            schemaName: public
+            tableName: exchange
+            columnNames: code
+
+  - changeSet:
+      id: 13
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: public
+              tableName: portfolio
+      changes:
+        - createTable:
+            tableName: portfolio
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+
+  - changeSet:
+      id: 14
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: public
+              tableName: portfolio_instruments
+      changes:
+        - createTable:
+            tableName: portfolio_instruments
+            schemaName: public
+            columns:
+              - column:
+                  name: portfolio_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weight
+                  type: numeric(10, 6)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: block_value
+                  type: numeric(12, 4)
+                  defaultValueNumeric: 1.0
+              - column:
+                  name: lot_size
+                  type: integer
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: portfolio_instruments
+            baseColumnNames: portfolio_id
+            referencedTableSchemaName: public
+            referencedTableName: portfolio
+            referencedColumnNames: id
+            constraintName: fk_portfolio_instruments_portfolio
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: portfolio_instruments
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: public
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_portfolio_instruments_instruments
+            onDelete: CASCADE
+        - addPrimaryKey:
+            schemaName: public
+            tableName: portfolio_instruments
+            columnNames: portfolio_id, instrument_id
+            constraintName: pk_portfolio_instruments
+
+  - changeSet:
+      id: 15
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: public
+              tableName: strategy
+      changes:
+        - createTable:
+            tableName: strategy
+            schemaName: public
+            remarks: Carver TradingAccount defaults
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: exchange_id
+                  type: integer
+              - column:
+                  name: initial_trading_capital
+                  type: numeric(20, 2)
+              - column:
+                  name: annualized_volatility_target
+                  type: numeric(10, 6)
+              - column:
+                  name: max_capital_multiple
+                  type: numeric(10, 4)
+              - column:
+                  name: position_inertia
+                  type: numeric(10, 6)
+              - column:
+                  name: trailing_stop_multiplier
+                  type: numeric(10, 4)
+              - column:
+                  name: compounding
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: slippage_rate
+                  type: numeric(10, 6)
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: strategy
+            baseColumnNames: exchange_id
+            referencedTableSchemaName: public
+            referencedTableName: exchange
+            referencedColumnNames: id
+            constraintName: fk_strategy_exchange
+
+  - changeSet:
+      id: 16
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: public
+              tableName: strategy_portfolio
+      changes:
+        - createTable:
+            tableName: strategy_portfolio
+            schemaName: public
+            columns:
+              - column:
+                  name: strategy_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: portfolio_id
+                  type: integer
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: strategy_portfolio
+            baseColumnNames: strategy_id
+            referencedTableSchemaName: public
+            referencedTableName: strategy
+            referencedColumnNames: id
+            constraintName: fk_strategy_portfolio_strategy
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: strategy_portfolio
+            baseColumnNames: portfolio_id
+            referencedTableSchemaName: public
+            referencedTableName: portfolio
+            referencedColumnNames: id
+            constraintName: fk_strategy_portfolio_portfolio
+            onDelete: CASCADE
+        - addPrimaryKey:
+            schemaName: public
+            tableName: strategy_portfolio
+            columnNames: strategy_id, portfolio_id
+            constraintName: pk_strategy_portfolio
+
+  - changeSet:
+      id: 17
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: public
+              tableName: rules
+      changes:
+        - createTable:
+            tableName: rules
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: code
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(128)
+              - column:
+                  name: description
+                  type: text
+        - addUniqueConstraint:
+            constraintName: uk_rules_code
+            schemaName: public
+            tableName: rules
+            columnNames: code
+
+  - changeSet:
+      id: 18
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: public
+              tableName: rule_variations
+      changes:
+        - createTable:
+            tableName: rule_variations
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: rule_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: params
+                  type: jsonb
+                  constraints:
+                    nullable: false
+              - column:
+                  name: params_hash
+                  type: varchar(64)
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: rule_variations
+            baseColumnNames: rule_id
+            referencedTableSchemaName: public
+            referencedTableName: rules
+            referencedColumnNames: id
+            constraintName: fk_rule_variations_rules
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 19
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: public
+              tableName: strategy_rules
+      changes:
+        - createTable:
+            tableName: strategy_rules
+            schemaName: public
+            columns:
+              - column:
+                  name: strategy_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rule_variation_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weight
+                  type: numeric(10, 6)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rule_group
+                  type: varchar(32)
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: strategy_rules
+            baseColumnNames: strategy_id
+            referencedTableSchemaName: public
+            referencedTableName: strategy
+            referencedColumnNames: id
+            constraintName: fk_strategy_rules_strategy
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: strategy_rules
+            baseColumnNames: rule_variation_id
+            referencedTableSchemaName: public
+            referencedTableName: rule_variations
+            referencedColumnNames: id
+            constraintName: fk_strategy_rules_rule_variations
+            onDelete: CASCADE
+        - addPrimaryKey:
+            schemaName: public
+            tableName: strategy_rules
+            columnNames: strategy_id, rule_variation_id
+            constraintName: pk_strategy_rules
+
+  - changeSet:
+      id: 20
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: public
+              tableName: instrument_forecasts
+      changes:
+        - createTable:
+            tableName: instrument_forecasts
+            schemaName: public
+            remarks: Forecast per bar; as_of = candle open time (k_interval)
+            columns:
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rule_variation_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: kline_interval
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: as_of
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: forecast_value
+                  type: numeric(10, 4)
+              - column:
+                  name: combined_forecast
+                  type: numeric(10, 4)
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: instrument_forecasts
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: public
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_instrument_forecasts_instruments
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: instrument_forecasts
+            baseColumnNames: rule_variation_id
+            referencedTableSchemaName: public
+            referencedTableName: rule_variations
+            referencedColumnNames: id
+            constraintName: fk_instrument_forecasts_rule_variations
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            constraintName: uk_instrument_forecasts_grain
+            schemaName: public
+            tableName: instrument_forecasts
+            columnNames: instrument_id, rule_variation_id, kline_interval, as_of
+
+  - changeSet:
+      id: 21
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      comment: carver_order/carver_deals — legacy public.order and public.deals (FIX) stay unchanged
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              schemaName: public
+              tableName: carver_order
+      changes:
+        - createTable:
+            tableName: carver_order
+            schemaName: public
+            remarks: Carver order row for live broker execution
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: strategy_id
+                  type: integer
+              - column:
+                  name: backtest_run_id
+                  type: integer
+                  remarks: Always NULL in public; used in backtests.carver_order
+              - column:
+                  name: order_dt
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price
+                  type: numeric(20, 8)
+              - column:
+                  name: quantity
+                  type: numeric(20, 8)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: side
+                  type: varchar(8)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: carver_order
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: public
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_carver_order_instruments
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: carver_order
+            baseColumnNames: strategy_id
+            referencedTableSchemaName: public
+            referencedTableName: strategy
+            referencedColumnNames: id
+            constraintName: fk_carver_order_strategy
+        - createTable:
+            tableName: carver_deals
+            schemaName: public
+            remarks: Carver round-trip (entry + exit orders)
+            columns:
+              - column:
+                  name: id
+                  type: serial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: buy_order_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sell_order_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: instrument_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: backtest_run_id
+                  type: integer
+              - column:
+                  name: start_dt
+                  type: timestamp
+              - column:
+                  name: end_dt
+                  type: timestamp
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: carver_deals
+            baseColumnNames: buy_order_id
+            referencedTableSchemaName: public
+            referencedTableName: carver_order
+            referencedColumnNames: id
+            constraintName: fk_carver_deals_buy_order
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: carver_deals
+            baseColumnNames: sell_order_id
+            referencedTableSchemaName: public
+            referencedTableName: carver_order
+            referencedColumnNames: id
+            constraintName: fk_carver_deals_sell_order
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: carver_deals
+            baseColumnNames: instrument_id
+            referencedTableSchemaName: public
+            referencedTableName: instruments
+            referencedColumnNames: id
+            constraintName: fk_carver_deals_instruments
+
+  - changeSet:
+      id: 22
+      author: gleb.skalatsky
+      context: test
+      labels: carver-seed
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM public.exchange WHERE code = 'tinvest'
+      changes:
+        - insert:
+            schemaName: public
+            tableName: exchange
+            columns:
+              - column:
+                  name: code
+                  value: tinvest
+              - column:
+                  name: name
+                  value: T-Invest MOEX
+              - column:
+                  name: currency
+                  value: RUB
+              - column:
+                  name: tariff_name
+                  value: Trader
+              - column:
+                  name: brokerage_rate_spot
+                  valueNumeric: 0.0005
+              - column:
+                  name: brokerage_rate_futures
+                  valueNumeric: 0.0004
+              - column:
+                  name: monthly_fee
+                  valueNumeric: 390
+              - column:
+                  name: effective_from
+                  valueDate: 2024-01-01
+
+  - changeSet:
+      id: 23-carver-seed-ewmac-rules
+      author: gleb.skalatsky
+      context: test
+      labels: carver-seed
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM public.rules WHERE code = 'ewmac'
+      changes:
+        - insert:
+            schemaName: public
+            tableName: rules
+            columns:
+              - column:
+                  name: code
+                  value: ewmac
+              - column:
+                  name: name
+                  value: EWMAC
+              - column:
+                  name: description
+                  value: Exponentially weighted moving average crossover forecast rule
+        - sql:
+            sql: |
+              INSERT INTO public.rule_variations (rule_id, name, params)
+              SELECT r.id, v.name, v.params::jsonb
+              FROM public.rules r
+              CROSS JOIN (VALUES
+                ('ewmac_4_16', '{"fast_span":4,"slow_span":16,"forecast_scalar":10}'),
+                ('ewmac_8_32', '{"fast_span":8,"slow_span":32,"forecast_scalar":10}'),
+                ('ewmac_16_64', '{"fast_span":16,"slow_span":64,"forecast_scalar":10}'),
+                ('ewmac_32_128', '{"fast_span":32,"slow_span":128,"forecast_scalar":10}'),
+                ('ewmac_64_256', '{"fast_span":64,"slow_span":256,"forecast_scalar":10}')
+              ) AS v(name, params)
+              WHERE r.code = 'ewmac'
+              AND NOT EXISTS (
+                SELECT 1 FROM public.rule_variations rv
+                WHERE rv.rule_id = r.id AND rv.name = v.name
+              );
+            splitStatements: false
+
+  - changeSet:
+      id: 24
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            columnExists:
+              schemaName: public
+              tableName: exchange
+              columnName: max_capital_multiple
+      changes:
+        - addColumn:
+            schemaName: public
+            tableName: exchange
+            columns:
+              - column:
+                  name: max_capital_multiple
+                  type: numeric(10, 4)
+                  constraints:
+                    nullable: false
+                  remarks: Max abs(position notional) as a multiple of capital at risk
+
+  - changeSet:
+      id: 25
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            schemaName: public
+            tableName: strategy
+            columnName: compounding
+      changes:
+        - dropColumn:
+            schemaName: public
+            tableName: strategy
+            columnName: compounding
+
+  - changeSet:
+      id: 26
+      author: gleb.skalatsky
+      context: test
+      labels: carver-public
+      changes:
+        - modifyDataType:
+            schemaName: public
+            tableName: portfolio
+            columnName: name
+            newDataType: varchar(500)

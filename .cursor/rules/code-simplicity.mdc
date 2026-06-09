@@ -1,0 +1,15 @@
+---
+description: Prefer simple, high-quality code
+alwaysApply: true
+---
+
+# Code Simplicity
+
+- When writing or editing code, make it as simple as possible while keeping code quality high.
+- Prefer direct, readable implementations over clever abstractions.
+- Add abstractions only when they clearly reduce real duplication or complexity.
+- Keep public APIs small and obvious.
+- Avoid over-engineering, speculative extensibility, and unnecessary indirection.
+- Write code based on software development best practices.
+- Preserve tests and type clarity for behavior that matters.
+- Prefer function and method names that start with a verb describing the action they perform.
