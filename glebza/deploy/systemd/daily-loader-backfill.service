@@ -1,0 +1,21 @@
+[Unit]
+Description=Glebza daily_loader one-off historical backfill
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=trader
+Group=trader
+EnvironmentFile=-/etc/glebza/daily-loader.env
+WorkingDirectory=/opt/glebza/daily_loader
+Environment=PYTHONPATH=src
+# Override backfill window via env vars set in /etc/glebza/daily-loader.env or drop-in.
+ExecStart=/bin/bash -c '/opt/glebza/daily_loader/.venv/bin/python -m daily_loader backfill \
+  --start-dt "${BACKFILL_START_DT:-2020-01-01T00:00:00+00:00}" \
+  --end-dt "${BACKFILL_END_DT:-$(date -u +%Y-%m-%dT00:00:00+00:00)}"'
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

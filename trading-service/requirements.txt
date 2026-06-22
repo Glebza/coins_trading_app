@@ -1,5 +1,0 @@
-fastapi==0.110.0
-pydantic==2.1.1
-
-orjson
-websockets

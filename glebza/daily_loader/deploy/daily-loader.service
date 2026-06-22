@@ -1,0 +1,15 @@
+[Unit]
+Description=Daily market data loader (sync-shares, klines, dividends, RUONIA, volatility)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/daily-loader.env
+WorkingDirectory=/opt/daily_loader
+ExecStart=/opt/daily_loader/.venv/bin/python -m daily_loader run
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

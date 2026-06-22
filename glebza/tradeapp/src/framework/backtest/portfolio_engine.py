@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import calendar
+import logging
 from datetime import datetime, timedelta
 from math import sqrt
 from typing import Any, Mapping, Optional
@@ -22,6 +23,8 @@ from repository.history_repository import HistoryRepository
 from repository.funding_rate_repository import FundingRateRepository
 from repository.instrument_dividend_repository import InstrumentDividendRepository
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def run_weighted_portfolio_backtest(
@@ -231,10 +234,14 @@ def _run_portfolio_instrument_backtests(
             )
         )
         if klines.empty:
-            raise ValueError(
-                f"No stored klines found for ticker='{instrument.ticker}' interval='{interval}' "
-                f"between {start_dt} and {end_dt}."
+            logger.warning(
+                "dropped ticker=%s: no klines in [%s, %s] interval=%s",
+                instrument.ticker,
+                start_dt,
+                end_dt,
+                interval,
             )
+            continue
         dividend_start_dt = start_dt - timedelta(days=365) if start_dt is not None else None
         dividends = dividend_repository.list_dividends(
             instrument.instrument_id,
@@ -253,6 +260,8 @@ def _run_portfolio_instrument_backtests(
             position_inertia=position_inertia,
             trailing_stop_multiplier=trailing_stop_multiplier,
         )
+    if not results:
+        raise ValueError("no instruments produced backtest results after dropping tickers with missing klines")
     return results
 
 
@@ -286,7 +295,7 @@ def _run_expanding_oos_instrument_backtests(
                 start_dt=start_dt - timedelta(days=365),
                 end_dt=test_end,
             )
-            training_klines = _load_klines_dataframe(
+            training_klines = _try_load_klines_dataframe(
                 history_repository,
                 instrument.instrument_id,
                 interval,
@@ -294,7 +303,7 @@ def _run_expanding_oos_instrument_backtests(
                 test_start,
                 ticker=instrument.ticker,
             )
-            test_klines = _load_klines_dataframe(
+            test_klines = _try_load_klines_dataframe(
                 history_repository,
                 instrument.instrument_id,
                 interval,
@@ -302,6 +311,19 @@ def _run_expanding_oos_instrument_backtests(
                 test_end,
                 ticker=instrument.ticker,
             )
+            if training_klines is None or test_klines is None:
+                logger.warning(
+                    "skip oos stage=%s ticker=%s interval=%s "
+                    "(training_window=[%s, %s) test_window=[%s, %s))",
+                    stage,
+                    instrument.ticker,
+                    interval,
+                    start_dt,
+                    test_start,
+                    test_start,
+                    test_end,
+                )
+                continue
             diagnostics = calculate_single_instrument_forecast_diversification(
                 training_klines,
                 dividends=dividends,
@@ -330,10 +352,44 @@ def _run_expanding_oos_instrument_backtests(
         test_start = test_end
         stage += 1
 
-    return {
-        ticker: _combine_stage_results(results, periods_per_year=periods_per_year)
-        for ticker, results in stage_results_by_ticker.items()
-    }
+    combined: dict[str, BacktestResult] = {}
+    for ticker, results in stage_results_by_ticker.items():
+        if not results:
+            logger.warning("dropped ticker=%s: no oos stage results after skipping missing klines", ticker)
+            continue
+        combined[ticker] = _combine_stage_results(results, periods_per_year=periods_per_year)
+    if not combined:
+        raise ValueError("no instruments produced oos results after dropping tickers with missing klines")
+    return combined
+
+
+def _try_load_klines_dataframe(
+    history_repository: HistoryRepository,
+    instrument_id: int,
+    interval: str,
+    start_dt: datetime,
+    end_dt: datetime,
+    *,
+    ticker: str,
+) -> Optional[pd.DataFrame]:
+    klines = pd.DataFrame(
+        history_repository.get_klines_by_instrument(
+            instrument_id,
+            interval,
+            start_dt,
+            end_dt,
+        )
+    )
+    if klines.empty:
+        return None
+    klines["k_interval"] = pd.to_datetime(klines["k_interval"], utc=True)
+    filtered = klines[
+        (klines["k_interval"] >= pd.Timestamp(start_dt))
+        & (klines["k_interval"] < pd.Timestamp(end_dt))
+    ]
+    if filtered.empty:
+        return None
+    return filtered
 
 
 def _load_klines_dataframe(
@@ -345,30 +401,20 @@ def _load_klines_dataframe(
     *,
     ticker: str,
 ) -> pd.DataFrame:
-    klines = pd.DataFrame(
-        history_repository.get_klines_by_instrument(
-            instrument_id,
-            interval,
-            start_dt,
-            end_dt,
-        )
+    loaded = _try_load_klines_dataframe(
+        history_repository,
+        instrument_id,
+        interval,
+        start_dt,
+        end_dt,
+        ticker=ticker,
     )
-    if klines.empty:
-        raise ValueError(
-            f"No stored klines found for ticker='{ticker}' interval='{interval}' "
-            f"between {start_dt} and {end_dt}."
-        )
-    klines["k_interval"] = pd.to_datetime(klines["k_interval"], utc=True)
-    filtered = klines[
-        (klines["k_interval"] >= pd.Timestamp(start_dt))
-        & (klines["k_interval"] < pd.Timestamp(end_dt))
-    ]
-    if filtered.empty:
+    if loaded is None:
         raise ValueError(
             f"No stored klines found for ticker='{ticker}' interval='{interval}' "
             f"in half-open window [{start_dt}, {end_dt})."
         )
-    return filtered
+    return loaded
 
 
 def _combine_stage_results(results: list[BacktestResult], *, periods_per_year: int) -> BacktestResult:
@@ -424,12 +470,29 @@ def _aggregate_portfolio_backtest(
     run_id: Optional[int] = None,
 ) -> PortfolioBacktestResult:
     """Combine per-instrument backtests into portfolio-level returns and metrics."""
-    missing = [instrument.ticker for instrument in portfolio.instruments if instrument.ticker not in instrument_results]
-    if missing:
-        raise ValueError(f"missing backtest results for tickers: {missing}")
+    active_instruments = [
+        instrument for instrument in portfolio.instruments if instrument.ticker in instrument_results
+    ]
+    dropped = [
+        instrument.ticker
+        for instrument in portfolio.instruments
+        if instrument.ticker not in instrument_results
+    ]
+    if dropped:
+        logger.warning(
+            "portfolio excludes tickers with missing backtest results: %s",
+            ",".join(sorted(dropped)),
+        )
+    if not active_instruments:
+        raise ValueError("no instruments left for portfolio aggregation after dropping missing tickers")
+
+    weight_total = sum(instrument.weight for instrument in active_instruments)
+    if weight_total <= 0:
+        raise ValueError("active portfolio weights must sum to a positive value")
 
     return_columns: list[pd.Series] = []
-    for instrument in portfolio.instruments:
+    for instrument in active_instruments:
+        normalized_weight = instrument.weight / weight_total
         rows = instrument_results[instrument.ticker].rows
         if "strategy_return" not in rows.columns:
             raise ValueError(f"strategy_return column is missing for ticker '{instrument.ticker}'")
@@ -445,10 +508,13 @@ def _aggregate_portfolio_backtest(
         raise ValueError("no overlapping return rows for portfolio instruments")
 
     result_rows = returns.copy()
-    for instrument in portfolio.instruments:
-        result_rows[f"{instrument.ticker}_weighted_return"] = result_rows[instrument.ticker] * instrument.weight
+    for instrument in active_instruments:
+        normalized_weight = instrument.weight / weight_total
+        result_rows[f"{instrument.ticker}_weighted_return"] = (
+            result_rows[instrument.ticker] * normalized_weight
+        )
 
-    weighted_columns = [f"{instrument.ticker}_weighted_return" for instrument in portfolio.instruments]
+    weighted_columns = [f"{instrument.ticker}_weighted_return" for instrument in active_instruments]
     result_rows["portfolio_return"] = result_rows[weighted_columns].sum(axis=1)
     result_rows = _attach_oos_metadata(result_rows, instrument_results, portfolio)
     result_rows["equity"] = (1.0 + result_rows["portfolio_return"]).cumprod()
@@ -471,7 +537,9 @@ def _aggregate_portfolio_backtest(
 
     return PortfolioBacktestResult(
         rows=result_rows,
-        instrument_results={instrument.ticker: instrument_results[instrument.ticker] for instrument in portfolio.instruments},
+        instrument_results={
+            instrument.ticker: instrument_results[instrument.ticker] for instrument in active_instruments
+        },
         total_return=total_return,
         cagr=cagr,
         annualized_return=annualized_return,
@@ -492,8 +560,8 @@ def _attach_oos_metadata(
     portfolio: Portfolio,
 ) -> pd.DataFrame:
     metadata_columns = ["oos_stage", "train_start_dt", "train_end_dt", "test_start_dt", "test_end_dt"]
-    for instrument in portfolio.instruments:
-        rows = instrument_results[instrument.ticker].rows
+    for ticker in instrument_results:
+        rows = instrument_results[ticker].rows
         if not set(metadata_columns).issubset(rows.columns):
             continue
 

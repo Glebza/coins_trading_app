@@ -1,0 +1,18 @@
+[Unit]
+Description=Glebza daily_loader incremental ingest (sync-shares, klines, dividends, RUONIA, vol)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=trader
+Group=trader
+EnvironmentFile=-/etc/glebza/daily-loader.env
+WorkingDirectory=/opt/glebza/daily_loader
+Environment=PYTHONPATH=src
+ExecStart=/opt/glebza/daily_loader/.venv/bin/python -m daily_loader run
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

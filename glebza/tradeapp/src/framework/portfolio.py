@@ -45,7 +45,7 @@ class Portfolio:
             raise ValueError("portfolio tickers must be unique")
 
         total_weight = sum(instrument.weight for instrument in self.instruments)
-        if abs(total_weight - 1.0) > 1e-9:
+        if abs(total_weight - 1.0) > 1e-5:
             raise ValueError("portfolio weights must sum to 1.0")
 
 

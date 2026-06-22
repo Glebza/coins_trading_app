@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Optional, Sequence
 
 import psycopg2
+import psycopg2.extras
 
 
 class PortfolioRepository:
@@ -75,6 +76,45 @@ class PortfolioRepository:
             if conn is not None:
                 conn.rollback()
             raise
+        finally:
+            if conn is not None:
+                conn.close()
+
+    def load_portfolio(self, portfolio_id: int):
+        """Load ``portfolio`` and ``portfolio_instruments`` with instrument tickers."""
+        from framework.portfolio import Portfolio, PortfolioInstrument
+
+        conn = None
+        try:
+            conn = self._connection()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(
+                """
+                SELECT pi.instrument_id, pi.weight, pi.block_value, pi.lot_size,
+                       i.ticker
+                FROM portfolio_instruments pi
+                JOIN instruments i ON i.id = pi.instrument_id
+                WHERE pi.portfolio_id = %s
+                ORDER BY i.ticker
+                """,
+                (portfolio_id,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+            if not rows:
+                raise ValueError(f"portfolio_id={portfolio_id} has no instruments")
+
+            instruments = [
+                PortfolioInstrument(
+                    ticker=row["ticker"],
+                    instrument_id=int(row["instrument_id"]),
+                    weight=float(row["weight"]),
+                    block_value=float(row["block_value"]),
+                    lot_size=int(row["lot_size"]),
+                )
+                for row in rows
+            ]
+            return Portfolio(instruments=instruments, id=portfolio_id)
         finally:
             if conn is not None:
                 conn.close()

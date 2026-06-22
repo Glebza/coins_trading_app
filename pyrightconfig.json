@@ -1,0 +1,18 @@
+{
+  "include": ["glebza"],
+  "extraPaths": ["."],
+  "executionEnvironments": [
+    {
+      "root": "glebza/daily_loader",
+      "extraPaths": ["glebza/daily_loader/src"]
+    },
+    {
+      "root": "glebza/tradeapp",
+      "extraPaths": ["glebza/tradeapp/src"]
+    },
+    {
+      "root": "glebza/transition_service",
+      "extraPaths": ["glebza/transition_service/src"]
+    }
+  ]
+}

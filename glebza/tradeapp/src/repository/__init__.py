@@ -6,6 +6,7 @@ __all__ = [
     "ExchangeRepository",
     "FundingRateRepository",
     "InstrumentDividendRepository",
+    "LiveDeploymentRepository",
     "PortfolioRepository",
     "RUN_STATUS_COMPLETED",
     "RUN_STATUS_FAILED",
@@ -56,4 +57,8 @@ def __getattr__(name: str):
         from repository.portfolio_repository import PortfolioRepository
 
         return PortfolioRepository
+    if name == "LiveDeploymentRepository":
+        from repository.live_deployment_repository import LiveDeploymentRepository
+
+        return LiveDeploymentRepository
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

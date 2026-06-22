@@ -7,6 +7,10 @@ glebza/tradeapp/db/.lb-app-run.properties
 glebza/tradeapp/reports/
 glebza/tradeapp/description.docx
 glebza/tradeapp/db/liquibase.bootstrap.properties.example
+glebza/deploy/deploy.env
+glebza/deploy/env/deploy.env
+glebza/deploy/env/*.env
+!glebza/deploy/env/*.env.example
 __pycache__/
 *.py[cod]
 reports/eutr-backtest-2025.png

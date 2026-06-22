@@ -1,0 +1,9 @@
+# Generated on the server as /opt/glebza/tradeapp/db/liquibase.backtest.properties
+changeLogFile=changelog/changelogbacktest-root.yaml
+liquibase.command.url=jdbc:postgresql://localhost:5432/backtest
+liquibase.command.username=trader
+liquibase.command.password=
+liquibase.command.contexts=backtest
+# Liquibase tracking tables live in public; app tables are created in schema backtests by changeSets.
+liquibase.liquibaseSchemaName=public
+liquibase.duplicateFileMode=WARN

@@ -99,7 +99,7 @@ class InstrumentsService:
         kline_interval: str = "1d",
         volatility_interval: str = "1d",
         volume_percentile: float = 0.60,
-        volatility_percentile: float = 0.60,
+        min_annualized_volatility: float = 0.20,
         kline_start_dt: Optional[datetime] = None,
         kline_end_dt: Optional[datetime] = None,
         min_klines: Optional[int] = None,
@@ -107,7 +107,8 @@ class InstrumentsService:
         exclude_for_qual_investor: bool = True,
     ) -> list[dict]:
         """
-        Universe filter: median kline volume and latest stored vol above cross-sectional thresholds.
+        Universe filter: median kline volume above cross-sectional threshold and latest stored
+        vol at or above ``min_annualized_volatility``.
 
         Requires populated ``kline_{interval}`` and ``instrument_volatility`` in the DB
         (see ``manutil`` load-klines / update-volatility). Uses ``DATABASE_URL`` and
@@ -117,7 +118,7 @@ class InstrumentsService:
             kline_interval=kline_interval,
             volatility_interval=volatility_interval,
             volume_percentile=volume_percentile,
-            volatility_percentile=volatility_percentile,
+            min_annualized_volatility=min_annualized_volatility,
             kline_start_dt=_normalize_dt(kline_start_dt),
             exclude_for_qual_investor=exclude_for_qual_investor,
         )

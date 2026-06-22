@@ -3,9 +3,16 @@
 # Example (from glebza/tradeapp/db):
 #   liquibase --defaultsFile=liquibase.bootstrap.properties --defaultsFile=liquibase.secrets.properties update
 #
-# Note: CREATE SCHEMA backtests in the backtest app DB is in
-# changelog/include/backtest/changelog-1.0.yaml (changeSet 0-backtests-schema), not here — this changelog
-# runs only against the postgres connection and cannot create schemas inside the backtest database.
+# This file creates cluster-level objects only (role + databases). It does NOT create app schemas or tables.
+#
+# | JDBC database | App schema   | Liquibase changelog                          |
+# |---------------|--------------|----------------------------------------------|
+# | traderdb      | public       | changelog-root.yaml (changelog-1.0 + 2.0)    |
+# | backtest      | backtests    | changelogbacktest-root.yaml (backtest/*)     |
+#
+# "traderdb" is the PostgreSQL database name, not a schema. All live/paper tables use schema "public".
+# CREATE SCHEMA backtests is in changelog/include/backtest/changelog-1.0.yaml (changeSet 0-backtests-schema).
+# public schema grants for traderdb are in changelog/include/changelog-1.0.yaml (changeSet 0-public-schema).
 databaseChangeLog:
   - changeSet:
       id: bootstrap-001-create-role-trader
@@ -56,3 +63,41 @@ databaseChangeLog:
         - sql:
             sql: CREATE DATABASE backtest OWNER trader
             splitStatements: false
+
+  - changeSet:
+      id: bootstrap-004-sync-trader-password
+      author: gleb.skalatsky
+      runInTransaction: false
+      dbms: postgresql
+      comment: |
+        Sync trader login password from trader.password when the role already exists.
+        Fixes mismatches after manual password changes or a skipped bootstrap-001 run.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 1
+            sql: SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE rolname = 'trader'
+      changes:
+        - sql:
+            sql: ALTER ROLE trader WITH LOGIN PASSWORD '${trader.password}'
+            splitStatements: false
+
+  - changeSet:
+      id: bootstrap-005-grant-databases
+      author: gleb.skalatsky
+      runInTransaction: false
+      dbms: postgresql
+      comment: Ensure trader owns connections to both application databases
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 2
+            sql: SELECT COUNT(*) FROM pg_catalog.pg_database WHERE datname IN ('traderdb', 'backtest')
+      changes:
+        - sql:
+            sql: GRANT ALL PRIVILEGES ON DATABASE traderdb TO trader
+            splitStatements: false
+        - sql:
+            sql: GRANT ALL PRIVILEGES ON DATABASE backtest TO trader
+            splitStatements: false
+

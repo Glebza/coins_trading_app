@@ -1,0 +1,7 @@
+# Generated on the server as /opt/glebza/tradeapp/db/liquibase.bootstrap.properties
+changeLogFile=changelog/changelog-bootstrap-root.yaml
+liquibase.command.url=jdbc:postgresql://localhost:5432/postgres
+liquibase.command.username=postgres
+liquibase.command.password=
+liquibase.liquibaseSchemaName=public
+liquibase.duplicateFileMode=WARN

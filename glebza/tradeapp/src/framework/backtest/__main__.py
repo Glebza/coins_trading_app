@@ -225,10 +225,10 @@ def main() -> None:
         help="Cross-sectional cutoff for median daily volume (default 0.60 = top 40%%).",
     )
     parser.add_argument(
-        "--volatility-percentile",
+        "--min-annualized-volatility",
         type=float,
-        default=0.60,
-        help="Cross-sectional cutoff for latest stored annualized volatility.",
+        default=0.20,
+        help="Minimum latest stored annualized volatility, e.g. 0.20 for 20%%.",
     )
     parser.add_argument(
         "--include-for-qual-investor",
@@ -275,7 +275,7 @@ def main() -> None:
         kline_interval=args.interval,
         volatility_interval=args.interval,
         volume_percentile=args.volume_percentile,
-        volatility_percentile=args.volatility_percentile,
+        min_annualized_volatility=args.min_annualized_volatility,
         kline_start_dt=start_dt,
         kline_end_dt=end_dt,
         exclude_for_qual_investor=not args.include_for_qual_investor,

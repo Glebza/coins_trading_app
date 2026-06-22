@@ -1,1 +1,0 @@
-"""Trading service package."""

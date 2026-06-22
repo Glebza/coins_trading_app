@@ -798,6 +798,7 @@ databaseChangeLog:
               - column:
                   name: max_capital_multiple
                   type: numeric(10, 4)
+                  defaultValueNumeric: 5.0
                   constraints:
                     nullable: false
                   remarks: Max abs(position notional) as a multiple of capital at risk

@@ -1,0 +1,8 @@
+# Generated on the server as /opt/glebza/tradeapp/db/liquibase.properties
+changeLogFile=changelog/changelog-root.yaml
+liquibase.command.url=jdbc:postgresql://localhost:5432/traderdb
+liquibase.command.username=trader
+liquibase.command.password=
+liquibase.command.contexts=test
+liquibase.liquibaseSchemaName=public
+liquibase.duplicateFileMode=WARN

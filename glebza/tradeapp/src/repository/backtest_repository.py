@@ -8,13 +8,16 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from math import sqrt
-from typing import Any, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 import psycopg2
 import psycopg2.extras
 
 from glebza.tradeapp.src.framework.account import TradingAccount
-from glebza.tradeapp.src.framework.backtest.result import BacktestResult, PortfolioBacktestResult
+
+if TYPE_CHECKING:
+    from glebza.tradeapp.src.framework.backtest.result import BacktestResult, PortfolioBacktestResult
+
 logger = logging.getLogger(__name__)
 
 RUN_STATUS_PENDING = "pending"
@@ -73,60 +76,6 @@ class BacktestRepository:
         connection.commit()
         return connection
 
-    def get_carver_strategy(self, strategy_id: int) -> Optional[dict[str, Any]]:
-        conn = None
-        try:
-            conn = self._connection()
-            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            cur.execute(
-                """
-                SELECT id, name, description, exchange_id,
-                       initial_trading_capital, annualized_volatility_target,
-                       max_capital_multiple, position_inertia,
-                       trailing_stop_multiplier, slippage_rate
-                FROM carver_strategy
-                WHERE id = %s
-                """,
-                (strategy_id,),
-            )
-            row = cur.fetchone()
-            cur.close()
-            return dict(row) if row else None
-        finally:
-            if conn is not None:
-                conn.close()
-
-    def get_portfolio_id_for_strategy(self, strategy_id: int) -> Optional[int]:
-        conn = None
-        try:
-            conn = self._connection()
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT portfolio_id FROM strategy_portfolio WHERE strategy_id = %s",
-                (strategy_id,),
-            )
-            row = cur.fetchone()
-            cur.close()
-            return int(row[0]) if row else None
-        finally:
-            if conn is not None:
-                conn.close()
-
-    def get_instrument_id_by_ticker(self, ticker: str) -> Optional[int]:
-        key = ticker.strip()
-        if not key:
-            return None
-        conn = None
-        try:
-            conn = self._connection()
-            cur = conn.cursor()
-            cur.execute("SELECT id FROM instruments WHERE ticker = %s", (key,))
-            row = cur.fetchone()
-            cur.close()
-            return int(row[0]) if row else None
-        finally:
-            if conn is not None:
-                conn.close()
 
     def create_run(self, spec: BacktestRun) -> int:
         """Insert ``backtest_runs`` and return the new id."""
@@ -247,6 +196,30 @@ class BacktestRepository:
             if conn is not None:
                 conn.close()
 
+    def link_strategy_portfolio(self, strategy_id: int, portfolio_id: int) -> None:
+        """Point a strategy at the portfolio used for its latest backtest run."""
+        conn = None
+        try:
+            conn = self._connection()
+            cur = conn.cursor()
+            cur.execute("DELETE FROM strategy_portfolio WHERE strategy_id = %s", (strategy_id,))
+            cur.execute(
+                """
+                INSERT INTO strategy_portfolio (strategy_id, portfolio_id)
+                VALUES (%s, %s)
+                """,
+                (strategy_id, portfolio_id),
+            )
+            conn.commit()
+            cur.close()
+        except (Exception, psycopg2.DatabaseError):
+            if conn is not None:
+                conn.rollback()
+            raise
+        finally:
+            if conn is not None:
+                conn.close()
+
     def store_run_start_for_portfolio_backtest(
         self,
         *,
@@ -282,49 +255,12 @@ class BacktestRepository:
             step_months=step_months,
             status=RUN_STATUS_RUNNING,
         )
-        return self.create_run(spec)
+        run_id = self.create_run(spec)
+        self.link_strategy_portfolio(strategy_id, portfolio_id)
+        return run_id
 
-    def update_run_status(
-        self,
-        run_id: int,
-        status: str,
-        *,
-        error_message: Optional[str] = None,
-        mark_started: bool = False,
-    ) -> None:
-        conn = None
-        try:
-            conn = self._connection()
-            cur = conn.cursor()
-            if mark_started:
-                cur.execute(
-                    """
-                    UPDATE backtest_runs
-                    SET status = %s, error_message = %s, started_at = COALESCE(started_at, %s)
-                    WHERE id = %s
-                    """,
-                    (status, error_message, _utc_now(), run_id),
-                )
-            else:
-                cur.execute(
-                    """
-                    UPDATE backtest_runs
-                    SET status = %s, error_message = %s
-                    WHERE id = %s
-                    """,
-                    (status, error_message, run_id),
-                )
-            conn.commit()
-            cur.close()
-        except (Exception, psycopg2.DatabaseError):
-            if conn is not None:
-                conn.rollback()
-            raise
-        finally:
-            if conn is not None:
-                conn.close()
 
-    def save_run_result(self, run_id: int, result: BacktestResult) -> None:
+    def save_run_result(self, run_id: int, result: "BacktestResult") -> None:
         """Persist portfolio-level metrics on ``backtest_runs`` (single-instrument run)."""
         conn = None
         try:
@@ -375,7 +311,7 @@ class BacktestRepository:
     def insert_run_instruments(
         self,
         run_id: int,
-        instrument_results: dict[str, BacktestResult],
+        instrument_results: dict[str, "BacktestResult"],
         *,
         ticker_to_instrument_id: Optional[dict[str, int]] = None,
     ) -> int:
@@ -443,7 +379,7 @@ class BacktestRepository:
     def save_portfolio_run_result(
         self,
         run_id: int,
-        result: PortfolioBacktestResult,
+        result: "PortfolioBacktestResult",
         *,
         ticker_to_instrument_id: Optional[dict[str, int]] = None,
     ) -> None:
@@ -456,7 +392,7 @@ class BacktestRepository:
         )
         self.insert_oos_stages(run_id, result)
 
-    def insert_oos_stages(self, run_id: int, result: PortfolioBacktestResult) -> int:
+    def insert_oos_stages(self, run_id: int, result: "PortfolioBacktestResult") -> int:
         """Persist per-stage summaries for expanding OOS runs."""
         rows = result.rows
         if "oos_stage" not in rows.columns or rows["oos_stage"].dropna().empty:
@@ -543,68 +479,12 @@ class BacktestRepository:
             if conn is not None:
                 conn.close()
 
-    def get_run(self, run_id: int) -> Optional[dict[str, Any]]:
-        conn = None
-        try:
-            conn = self._connection()
-            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            cur.execute("SELECT * FROM backtest_runs WHERE id = %s", (run_id,))
-            row = cur.fetchone()
-            cur.close()
-            return dict(row) if row else None
-        finally:
-            if conn is not None:
-                conn.close()
-
-    def list_run_instruments(self, run_id: int) -> List[dict[str, Any]]:
-        conn = None
-        try:
-            conn = self._connection()
-            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            cur.execute(
-                """
-                SELECT id, backtest_run_id, instrument_id, ticker,
-                       total_return, sharpe, max_drawdown
-                FROM backtest_run_instruments
-                WHERE backtest_run_id = %s
-                ORDER BY ticker
-                """,
-                (run_id,),
-            )
-            rows = cur.fetchall()
-            cur.close()
-            return [dict(r) for r in rows]
-        finally:
-            if conn is not None:
-                conn.close()
-
-    def list_runs(self, *, limit: int = 50) -> List[dict[str, Any]]:
-        conn = None
-        try:
-            conn = self._connection()
-            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            cur.execute(
-                """
-                SELECT id, strategy_id, portfolio_id, exchange_id,
-                       kline_interval, start_dt, end_dt, status,
-                       total_return, sharpe, max_drawdown,
-                       started_at, finished_at
-                FROM backtest_runs
-                ORDER BY id DESC
-                LIMIT %s
-                """,
-                (limit,),
-            )
-            rows = cur.fetchall()
-            cur.close()
-            return [dict(r) for r in rows]
-        finally:
-            if conn is not None:
-                conn.close()
 
 
-def _portfolio_result_as_backtest_result(result: PortfolioBacktestResult) -> BacktestResult:
+def _portfolio_result_as_backtest_result(result: "PortfolioBacktestResult") -> "BacktestResult":
     """Map portfolio aggregates to the shape stored on ``backtest_runs``."""
+    from glebza.tradeapp.src.framework.backtest.result import BacktestResult
+
     return BacktestResult(
         rows=result.rows,
         total_return=result.total_return,

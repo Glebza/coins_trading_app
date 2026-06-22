@@ -346,12 +346,13 @@ class TinvestRepository:
         kline_interval: str = "1d",
         volatility_interval: str = "1d",
         volume_percentile: float = 0.60,
-        volatility_percentile: float = 0.60,
+        min_annualized_volatility: float = 0.20,
         kline_start_dt: Optional[datetime] = None,
         exclude_for_qual_investor: bool = True,
     ) -> List[dict]:
         """
-        Shares with median daily volume and latest realized vol at or above the given percentiles.
+        Shares with median daily volume at or above the volume percentile and latest
+        realized vol at or above ``min_annualized_volatility``.
 
         Uses ``kline_{interval}`` for median volume per ``ticker_id`` and the latest
         ``instrument_volatility`` row per instrument for ``volatility_interval``.
@@ -361,8 +362,10 @@ class TinvestRepository:
                 f"Unsupported kline_interval '{kline_interval}'. "
                 f"Expected one of {sorted(_KLINE_INTERVALS)}"
             )
-        if not 0 < volume_percentile <= 1 or not 0 < volatility_percentile <= 1:
-            raise ValueError("volume_percentile and volatility_percentile must be in (0, 1]")
+        if not 0 < volume_percentile <= 1:
+            raise ValueError("volume_percentile must be in (0, 1]")
+        if min_annualized_volatility <= 0:
+            raise ValueError("min_annualized_volatility must be positive")
 
         kline_table = f"kline_{kline_interval}"
         kline_where = ""
@@ -395,10 +398,6 @@ class TinvestRepository:
                 FROM instrument_volatility
                 WHERE interval_name = %s
                 ORDER BY instrument_id, as_of DESC
-            ),
-            vol_thresh AS (
-                SELECT percentile_disc(%s) WITHIN GROUP (ORDER BY annualized_volatility) AS p_threshold
-                FROM latest_vol
             )
             SELECT
                 i.id AS instrument_id,
@@ -420,14 +419,13 @@ class TinvestRepository:
             JOIN per_ticker p ON i.id = p.ticker_id
             JOIN latest_vol lv ON i.id = lv.instrument_id
             CROSS JOIN med_vol_thresh mvt
-            CROSS JOIN vol_thresh vt
             WHERE i.instrument_type = %s
               AND p.med_volume >= mvt.p_threshold
-              AND lv.annualized_volatility >= vt.p_threshold
+              AND lv.annualized_volatility >= %s
               {qual_clause}
             ORDER BY i.ticker
         """
-        params.extend([volume_percentile, volatility_interval, volatility_percentile, SHARE])
+        params.extend([volume_percentile, volatility_interval, SHARE, min_annualized_volatility])
 
         conn = None
         try:
